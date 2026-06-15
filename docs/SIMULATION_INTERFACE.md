@@ -122,15 +122,13 @@ Let `m_l = mean_E[l]`, `v_l = var_E[l]`, layers `l = 0..L-1`, events `N`.
 | Observable | Definition | Notes |
 |-----------|-----------|-------|
 | `total_edep` | `Σ_l m_l` | total visible energy [MeV] |
-| `shower_max_depth` | `argmax_l m_l` (sub-bin via parabolic fit) | layer index / X₀ |
-| `longitudinal_containment` | `Σ_l m_l / E_ref` | `E_ref` = total at deep ref or beam E |
-| `sampling_fraction` | `Σ active m_l / Σ all m_l` | active = sensitive layers |
-| `resolution_proxy` | `sqrt(Σ_l v_l) / Σ_l m_l` | event-level σ_E/E proxy* |
-| `peak_edep` | `max_l m_l` | shower-max amplitude |
+| `peak_edep` | `softmax_beta(m)` | smooth max surrogate (log-sum-exp) |
+| `shower_max_depth` | `Σ_l l * softmax_beta(m)_l` | smooth argmax over layer index |
+| `visible_fraction` | `Σ_l m_l / E_beam` | normalized by design-point beam energy |
+| `front_fraction` | `Σ_{l < L/2} m_l / Σ_l m_l` | front-half longitudinal fraction |
 
-*The resolution proxy from per-layer variances is approximate (ignores
-inter-layer covariance). For a rigorous σ_E/E, sum per-event totals; consider
-adding an event-level total to the C++ output later. Document the choice.
+`tools/observables.py` uses smooth surrogates for peak/depth so value and
+gradient are consistent in AD and finite-difference cross-checks.
 
 ### Sensitivity of a derived observable
 - **Forward path:** if `O = f({m_l})`, then `dO = Σ_l (∂f/∂m_l) · mean_dE[l]`

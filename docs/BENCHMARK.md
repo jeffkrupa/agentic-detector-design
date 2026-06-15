@@ -21,15 +21,15 @@ A benchmark **item** is a triple:
 ```
 
 ### Grid (quick vs full)
-- **Observables:** `total_edep`, `shower_max_depth`, `longitudinal_containment`,
-  `sampling_fraction`, `resolution_proxy`, `peak_edep`.
+- **Observables:** `total_edep`, `shower_max_depth`, `peak_edep`,
+  `visible_fraction`, `front_fraction`.
 - **Parameters:** `a` (absorber), `g` (gap), `E` (beam energy).
 - **Design points:** Cartesian grid, e.g.
   `a ∈ {1.5, 2.3, 3.0}` mm, `g ∈ {4, 5.7, 8}` mm, `E ∈ {5, 10, 25}` GeV,
   `particle ∈ {e-, gamma}`. (Quick mode: 1 value each + 2 energies.)
 - **Statistics:** pin `-n` (e.g. 5000) and a fixed seed list; record in the file.
 
-Full grid ≈ `6 obs × 3 par × (3·3·3·2) points ≈ 1000` items — still cheap because
+Full grid ≈ `5 obs × 3 par × (3·3·3·2) points ≈ 800` items — still cheap because
 each forward run yields all observables' profiles for one seeded parameter, and
 the `sim` cache deduplicates.
 
