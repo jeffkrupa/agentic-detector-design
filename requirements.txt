@@ -1,0 +1,10 @@
+# Core (required by the tool layer; must run on a bare cluster node)
+numpy>=1.21
+pyyaml>=6.0
+
+# Optional: real LLM backends (only needed when llm.model != "dry-run")
+# anthropic>=0.40
+# openai>=1.40
+
+# Optional: plotting for benchmark/figures
+# matplotlib>=3.6

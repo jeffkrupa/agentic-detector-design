@@ -1,0 +1,15 @@
+# Local config (copy of config.example.yaml with edited paths)
+config.yaml
+
+# Simulation result cache (regenerable; keyed by flag-hash)
+.sim_cache/
+
+# Agent run outputs and benchmark artifacts
+runs/
+benchmark/data/
+benchmark/results/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

@@ -1,0 +1,62 @@
+# Copy to config.yaml and edit as needed. Paths are the ground truth used by tools/sim.py.
+paths:
+  repo_root:   /sdf/data/atlas/u/jkrupa/hepemshow/hepemshow
+  forward_bin: /sdf/data/atlas/u/jkrupa/hepemshow/hepemshow/build/HepEmShow
+  reverse_bin: /sdf/data/atlas/u/jkrupa/hepemshow/hepemshow/build_reverse/HepEmShow
+  hepem_data:  /sdf/data/atlas/u/jkrupa/hepemshow/hepemshow/data/hepem_data.json
+  cache_dir:   .sim_cache        # relative to this folder; stores parsed results by flag-hash
+
+# Canonical "good" differentiation configuration (matches the physics paper main result).
+# These are passed to every sim call unless an experiment overrides them.
+# NOTE: CLI short flags verified against Simulation/include/InputParameters.hh:
+#   -N is conversion-reg-eps (CRE), -A is numia-mfp-floor, -C is gamma-mfp-cap (gmc).
+ctrl_flags:
+  stop_grad_mode: 2            # -x : 0=off, 1=track-only, 2=track+descendants
+  grazing_stop_track: 1        # -y
+  backward_boundary_stop: 1    # -B
+  grazing_threshold: 0.2       # -f : |vx| grazing threshold
+  conversion_reg_eps: "1e-3"   # -N : CRE (set null to disable)
+  gamma_mfp_cap: 1000          # -C : gmc (set null to disable)
+  numia_mfp_floor: null        # -A : off by default
+
+# Default geometry / primary (the paper's 50-layer Pb/lAr calorimeter).
+defaults:
+  n_layers: 50
+  absorber_mm: 2.3
+  gap_mm: 5.7
+  transverse_mm: 400.0
+  particle: "e-"
+  energy_mev: 10000.0
+
+# Statistics knobs.
+stats:
+  dev_events: 1000      # events per run during development/self-test
+  dev_seeds: [1, 2]
+  bench_events: 5000    # events per run for benchmark ground truth
+  bench_seeds: [1, 2, 3, 4]
+
+# Agent loop budget.
+agent:
+  max_steps: 20
+  max_sim_runs: 200          # hard cap on binary invocations per task
+  trust_region:
+    max_step_absorber_mm: 0.5
+    max_step_gap_mm: 1.0
+    max_step_energy_mev: 2000.0
+
+# LLM backend. Use "dry-run" to run with deterministic heuristics and no API key.
+llm:
+  model: "dry-run"           # e.g. "anthropic:claude-sonnet-4" | "openai:gpt-4.1" | "dry-run"
+  temperature: 0.0
+  max_tokens: 4096
+  # api_key_env: ANTHROPIC_API_KEY   # name of the env var holding the key
+
+# Reliability thresholds (see tools/reliability.py and docs/SIMULATION_INTERFACE.md).
+reliability:
+  snr_ok: 5.0                # |grad| / stderr >= snr_ok  -> reliable
+  snr_marginal: 2.0          # snr_marginal <= snr < snr_ok -> marginal; below -> untrusted
+  fd_rel_tol: 0.25           # AD vs FD relative disagreement above this -> untrusted
+  fd_step:                   # finite-difference step sizes for cross-checks
+    a: 0.05                  # mm
+    g: 0.05                  # mm
+    energy: 50.0             # MeV

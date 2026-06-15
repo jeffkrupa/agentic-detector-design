@@ -1,0 +1,380 @@
+"""Functional wrapper around the differentiable HepEmShow binaries.
+
+Responsibilities
+----------------
+* build correct command lines for the forward and reverse AD builds,
+* run each invocation in an isolated temp dir (each process writes edeps_* /
+  barInputs into its CWD),
+* parse the outputs into numpy arrays,
+* cache parsed results on disk keyed by a hash of the full command,
+* expose high-level helpers used by observables.py / reliability.py / the agent.
+
+All paths and the canonical control-flag set come from config.yaml (falling back
+to config.example.yaml). Nothing here is hard-coded.
+
+CLI
+---
+    python -m tools.sim --selftest
+    python -m tools.sim --observable total_edep --wrt a --a 2.3 --energy 10000 -n 1000
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+from dataclasses import asdict
+from pathlib import Path
+from typing import Optional
+
+import numpy as np
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover
+    yaml = None
+
+from .schemas import DesignPoint, CtrlFlags, RawRun, DIFFERENTIABLE_PARAMS
+
+_HERE = Path(__file__).resolve().parent
+_AGENTIC = _HERE.parent
+
+
+# --------------------------------------------------------------------------- #
+# Configuration
+# --------------------------------------------------------------------------- #
+_CONFIG_CACHE: Optional[dict] = None
+
+
+def load_config() -> dict:
+    """Load config.yaml, falling back to config.example.yaml."""
+    global _CONFIG_CACHE
+    if _CONFIG_CACHE is not None:
+        return _CONFIG_CACHE
+    if yaml is None:
+        raise RuntimeError("pyyaml is required: pip install pyyaml")
+    for name in ("config.yaml", "config.example.yaml"):
+        p = _AGENTIC / name
+        if p.exists():
+            with open(p) as fh:
+                _CONFIG_CACHE = yaml.safe_load(fh)
+            _CONFIG_CACHE["_source"] = str(p)
+            return _CONFIG_CACHE
+    raise FileNotFoundError("No config.yaml or config.example.yaml found in agentic/")
+
+
+def ctrl_flags_from_config(cfg: Optional[dict] = None) -> CtrlFlags:
+    cfg = cfg or load_config()
+    c = dict(cfg.get("ctrl_flags", {}))
+    return CtrlFlags(
+        stop_grad_mode=c.get("stop_grad_mode", 2),
+        grazing_stop_track=c.get("grazing_stop_track", 1),
+        backward_boundary_stop=c.get("backward_boundary_stop", 1),
+        grazing_threshold=c.get("grazing_threshold", 0.2),
+        conversion_reg_eps=c.get("conversion_reg_eps", "1e-3"),
+        gamma_mfp_cap=c.get("gamma_mfp_cap", 1000.0),
+        numia_mfp_floor=c.get("numia_mfp_floor", None),
+    )
+
+
+def default_design_point(cfg: Optional[dict] = None) -> DesignPoint:
+    cfg = cfg or load_config()
+    d = cfg.get("defaults", {})
+    return DesignPoint(
+        a=float(d.get("absorber_mm", 2.3)),
+        g=float(d.get("gap_mm", 5.7)),
+        energy=float(d.get("energy_mev", 10000.0)),
+        n_layers=int(d.get("n_layers", 50)),
+        transverse=float(d.get("transverse_mm", 400.0)),
+        particle=str(d.get("particle", "e-")),
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Command construction
+# --------------------------------------------------------------------------- #
+def _common_args(dp: DesignPoint, ctrl: CtrlFlags, n_events: int, seed: int,
+                 cfg: dict, seeded_param: Optional[str]) -> list:
+    """Geometry/primary/run args shared by forward and reverse builds.
+
+    ``seeded_param`` (forward mode only) appends ':1' to that input to seed the
+    forward-AD dot value. Exactly one of {a, g, energy} may be seeded.
+    """
+    data = cfg["paths"]["hepem_data"]
+
+    def maybe_seed(name: str, value) -> str:
+        return f"{value}:1" if name == seeded_param else f"{value}"
+
+    args = [
+        "-d", data,
+        "-n", str(int(n_events)),
+        "-s", str(int(seed)),
+        "-p", dp.particle,
+        "-l", str(int(dp.n_layers)),
+        "-t", str(dp.transverse),
+        "-e", maybe_seed("energy", dp.energy),
+        "-a", maybe_seed("a", dp.a),
+        "-g", maybe_seed("g", dp.g),
+        "-v", "0",
+    ]
+    args += ctrl.to_cli_args()
+    return args
+
+
+def _flag_hash(binary: str, args: list) -> str:
+    payload = json.dumps([binary, args], sort_keys=True)
+    return hashlib.sha1(payload.encode()).hexdigest()[:16]
+
+
+# --------------------------------------------------------------------------- #
+# Caching
+# --------------------------------------------------------------------------- #
+def _cache_dir(cfg: dict) -> Path:
+    d = _AGENTIC / cfg["paths"].get("cache_dir", ".sim_cache")
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _cache_load(cfg: dict, key: str) -> Optional[dict]:
+    p = _cache_dir(cfg) / f"{key}.npz"
+    if not p.exists():
+        return None
+    with np.load(p, allow_pickle=True) as z:
+        return {k: z[k] for k in z.files}
+
+
+def _cache_store(cfg: dict, key: str, **arrays) -> None:
+    p = _cache_dir(cfg) / f"{key}.npz"
+    np.savez(p, **arrays)
+
+
+# --------------------------------------------------------------------------- #
+# Running
+# --------------------------------------------------------------------------- #
+def _parse_edeps(path: Path) -> np.ndarray:
+    arr = np.loadtxt(path)
+    if arr.ndim == 1:
+        arr = arr.reshape(1, -1)
+    if arr.shape[1] != 4:
+        raise ValueError(f"{path}: expected 4 columns, got {arr.shape}")
+    return arr
+
+
+def _parse_bar_inputs(path: Path) -> np.ndarray:
+    arr = np.loadtxt(path)
+    if arr.ndim == 1:
+        arr = arr.reshape(-1, 2)
+    # rows: [absorber, gap, energy]; cols: [mean, var]
+    return arr
+
+
+def run_forward(dp: DesignPoint, seeded_param: str, n_events: int, seed: int,
+                ctrl: Optional[CtrlFlags] = None, use_cache: bool = True) -> RawRun:
+    """Forward-mode run seeding exactly one differentiable input."""
+    if seeded_param not in DIFFERENTIABLE_PARAMS:
+        raise ValueError(f"seeded_param must be one of {DIFFERENTIABLE_PARAMS}")
+    cfg = load_config()
+    ctrl = ctrl or ctrl_flags_from_config(cfg)
+    binary = cfg["paths"]["forward_bin"]
+    args = _common_args(dp, ctrl, n_events, seed, cfg, seeded_param=seeded_param)
+    key = _flag_hash(binary, args)
+
+    if use_cache:
+        cached = _cache_load(cfg, key)
+        if cached is not None:
+            return RawRun(edeps=cached["edeps"], bar_inputs=None, n_events=n_events,
+                          seed=seed, mode="forward", seeded_param=seeded_param,
+                          returncode=int(cached.get("rc", 0)),
+                          nan=bool(cached.get("nan", False)))
+
+    edeps, rc, nan = _execute(binary, args, expect="edeps", seed=seed)
+    if use_cache and rc == 0 and edeps is not None:
+        _cache_store(cfg, key, edeps=edeps, rc=rc, nan=nan)
+    return RawRun(edeps=edeps, bar_inputs=None, n_events=n_events, seed=seed,
+                  mode="forward", seeded_param=seeded_param, returncode=rc, nan=nan)
+
+
+def run_reverse(dp: DesignPoint, adjoints: np.ndarray, n_events: int, seed: int,
+                ctrl: Optional[CtrlFlags] = None, use_cache: bool = True) -> RawRun:
+    """Reverse-mode run; ``adjoints`` are per-layer output bars (len = n_layers)."""
+    cfg = load_config()
+    ctrl = ctrl or ctrl_flags_from_config(cfg)
+    binary = cfg["paths"]["reverse_bin"]
+    adj = np.asarray(adjoints, dtype=float).ravel()
+    if adj.size != dp.n_layers:
+        raise ValueError(f"adjoints length {adj.size} != n_layers {dp.n_layers}")
+    args = _common_args(dp, ctrl, n_events, seed, cfg, seeded_param=None)
+    args += ["-b", ":".join(repr(float(x)) for x in adj)]
+    key = _flag_hash(binary, args)
+
+    if use_cache:
+        cached = _cache_load(cfg, key)
+        if cached is not None:
+            return RawRun(edeps=cached.get("edeps"), bar_inputs=cached["bar_inputs"],
+                          n_events=n_events, seed=seed, mode="reverse",
+                          seeded_param=None, returncode=int(cached.get("rc", 0)),
+                          nan=bool(cached.get("nan", False)))
+
+    bar, rc, nan = _execute(binary, args, expect="barInputs", seed=seed)
+    if use_cache and rc == 0 and bar is not None:
+        _cache_store(cfg, key, bar_inputs=bar, rc=rc, nan=nan)
+    return RawRun(edeps=None, bar_inputs=bar, n_events=n_events, seed=seed,
+                  mode="reverse", seeded_param=None, returncode=rc, nan=nan)
+
+
+def _execute(binary: str, args: list, expect: str, seed: int):
+    """Run the binary in an isolated temp dir and parse the expected output."""
+    if not Path(binary).exists():
+        raise FileNotFoundError(f"binary not found: {binary} (check config.yaml paths)")
+    with tempfile.TemporaryDirectory(prefix="hepemshow_agentic_") as wd:
+        proc = subprocess.run([binary, *args], cwd=wd,
+                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        rc = proc.returncode
+        if expect == "edeps":
+            out = Path(wd) / f"edeps_{seed}"
+            if not out.exists():
+                # some builds name it without seed suffix; fall back to glob
+                cand = list(Path(wd).glob("edeps_*"))
+                out = cand[0] if cand else out
+            if rc != 0 or not out.exists():
+                return None, rc, True
+            arr = _parse_edeps(out)
+            return arr, rc, bool(np.isnan(arr).any())
+        else:
+            out = Path(wd) / "barInputs"
+            if rc != 0 or not out.exists():
+                return None, rc, True
+            arr = _parse_bar_inputs(out)
+            return arr, rc, bool(np.isnan(arr).any())
+
+
+# --------------------------------------------------------------------------- #
+# Multi-seed aggregation helpers
+# --------------------------------------------------------------------------- #
+def forward_profile_multiseed(dp: DesignPoint, seeded_param: str, n_events: int,
+                              seeds, ctrl: Optional[CtrlFlags] = None):
+    """Average edeps arrays over seeds. Returns (mean_arr, n_total, reliability_inputs).
+
+    mean_arr has shape (n_layers, 4); n_total = n_events * n_ok_seeds.
+    """
+    runs = [run_forward(dp, seeded_param, n_events, s, ctrl=ctrl) for s in seeds]
+    ok = [r for r in runs if r.returncode == 0 and r.edeps is not None and not r.nan]
+    if not ok:
+        return None, 0, runs
+    stack = np.stack([r.edeps for r in ok], axis=0)   # (n_ok, n_layers, 4)
+    mean_arr = stack.mean(axis=0)
+    n_total = n_events * len(ok)
+    return mean_arr, n_total, runs
+
+
+def reverse_gradient_multiseed(dp: DesignPoint, adjoints: np.ndarray, n_events: int,
+                               seeds, ctrl: Optional[CtrlFlags] = None):
+    """Average barInputs over seeds. Returns (grad_dict, stderr_dict, n_total)."""
+    runs = [run_reverse(dp, adjoints, n_events, s, ctrl=ctrl) for s in seeds]
+    ok = [r for r in runs if r.returncode == 0 and r.bar_inputs is not None and not r.nan]
+    if not ok:
+        return None, None, 0
+    means = np.stack([r.bar_inputs[:, 0] for r in ok], axis=0)  # (n_ok, 3)
+    vars_ = np.stack([r.bar_inputs[:, 1] for r in ok], axis=0)
+    n_total = n_events * len(ok)
+    grad = means.mean(axis=0)
+    # combine per-event variance across seeds -> SE of the mean
+    se = np.sqrt(vars_.mean(axis=0) / n_total)
+    keys = ("a", "g", "energy")
+    grad_d = {k: float(grad[i]) for i, k in enumerate(keys)}
+    se_d = {k: float(se[i]) for i, k in enumerate(keys)}
+    return grad_d, se_d, n_total
+
+
+# --------------------------------------------------------------------------- #
+# CLI / self-test
+# --------------------------------------------------------------------------- #
+def _selftest() -> int:
+    cfg = load_config()
+    print(f"[config] {cfg['_source']}")
+    dp = default_design_point(cfg)
+    ctrl = ctrl_flags_from_config(cfg)
+    n = int(cfg["stats"]["dev_events"])
+    seed = int(cfg["stats"]["dev_seeds"][0])
+    print(f"[design] {dp}")
+    print(f"[ctrl]   forward args: {ctrl.to_cli_args()}")
+
+    # IMPORTANT: forward and reverse must use the SAME seed so they operate on
+    # identical shower realizations. Both are exact AD of the same quantity
+    # (sum_l edep_l), so summed over the same events they must agree to ~machine
+    # precision. Using different seeds only agrees in expectation and is swamped
+    # by the (very large) event-to-event derivative variance -- that comparison
+    # is meaningless at small N and must NOT be used to validate the plumbing.
+    print(f"[forward] seeding 'a' (absorber thickness), seed={seed} ...")
+    fr = run_forward(dp, "a", n_events=n, seed=seed, ctrl=ctrl, use_cache=False)
+    if fr.returncode != 0 or fr.edeps is None:
+        print(f"  FAIL rc={fr.returncode}")
+        return 1
+    total = fr.edeps[:, 0].sum()
+    dtotal_da_fwd = fr.edeps[:, 2].sum()
+    print(f"  OK  total_edep={total:.1f} MeV   d(total)/da={dtotal_da_fwd:.6g} MeV/mm")
+
+    print(f"[reverse] adjoints = ones (gradient of total_edep), seed={seed} ...")
+    adj = np.ones(dp.n_layers)
+    rr = run_reverse(dp, adj, n_events=n, seed=seed, ctrl=ctrl, use_cache=False)
+    if rr.returncode != 0 or rr.bar_inputs is None:
+        print(f"  FAIL rc={rr.returncode}")
+        return 1
+    ba, bg, be = rr.bar_inputs[:, 0]
+    print(f"  OK  d(total)/d[a,g,E] = [{ba:.6g}, {bg:.6g}, {be:.6g}]")
+
+    # Real validation: forward (sum of per-layer dE/da) == reverse barThicknessAbsorber.
+    denom = max(abs(dtotal_da_fwd), abs(ba), 1e-12)
+    rel = abs(dtotal_da_fwd - ba) / denom
+    tol = 1e-3  # generous; same-seed exact AD should match far tighter
+    print(f"  cross-check (same seed): forward d(total)/da={dtotal_da_fwd:.6g} vs "
+          f"reverse {ba:.6g}  -> rel.diff={rel:.2e} (tol={tol:g})")
+    if not np.isfinite(rel) or rel > tol:
+        print("[selftest] FAIL: forward/reverse AD disagree beyond tolerance.")
+        print("  (If both runs succeeded, check that the two builds share physics "
+              "config and that seeds match.)")
+        return 1
+    print("[selftest] PASS")
+    return 0
+
+
+def _main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description="HepEmShow differentiable-sim tool layer")
+    ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--observable", default=None)
+    ap.add_argument("--wrt", default="a", choices=DIFFERENTIABLE_PARAMS)
+    ap.add_argument("--a", type=float, default=None)
+    ap.add_argument("--g", type=float, default=None)
+    ap.add_argument("--energy", type=float, default=None)
+    ap.add_argument("-n", "--n-events", type=int, default=None)
+    args = ap.parse_args(argv)
+
+    if args.selftest:
+        return _selftest()
+
+    if args.observable:
+        from . import observables  # local import to avoid cycle at module load
+        cfg = load_config()
+        dp = default_design_point(cfg)
+        if args.a is not None:
+            dp = dp.with_param("a", args.a)
+        if args.g is not None:
+            dp = dp.with_param("g", args.g)
+        if args.energy is not None:
+            dp = dp.with_param("energy", args.energy)
+        n = args.n_events or int(cfg["stats"]["dev_events"])
+        sens = observables.sensitivity(args.observable, args.wrt, dp, n_events=n,
+                                       seeds=cfg["stats"]["dev_seeds"])
+        print(json.dumps({**asdict(sens), "sign": sens.sign,
+                          "log10_abs": sens.log10_abs}, default=str, indent=2))
+        return 0
+
+    ap.print_help()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(_main())
