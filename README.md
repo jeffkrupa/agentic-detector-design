@@ -68,7 +68,7 @@ file formats, and the parameter/observable catalog.
 ## Repository map
 
 ```
-agentic/
+agentic-detector-design/
 ├── README.md                  # this file
 ├── CLAUDE.md                  # operating manual for Claude Code (read this first)
 ├── requirements.txt
@@ -82,7 +82,7 @@ agentic/
 ├── tools/                     # FUNCTIONAL python layer that drives the real binaries
 │   ├── schemas.py             # dataclasses: DesignPoint, Sensitivity, Observable, ...
 │   ├── sim.py                 # forward/reverse HepEmShow wrappers + caching
-│   ├── observables.py         # derived observables (resolution, containment, ...)
+│   ├── observables.py         # derived observables (total, peak, depth, fractions)
 │   └── reliability.py         # gradient reliability flag heuristics
 ├── agent/                     # model-agnostic agent scaffolding
 │   ├── tool_registry.py       # JSON tool schemas wrapping tools/*.py
@@ -101,7 +101,8 @@ agentic/
 ## Quickstart
 
 ```bash
-cd /sdf/data/atlas/u/jkrupa/hepemshow/hepemshow/build/hepemshow_utils/agentic
+git clone git@github.com:jeffkrupa/agentic-detector-design.git
+cd agentic-detector-design
 python -m pip install -r requirements.txt
 cp config.example.yaml config.yaml      # edit paths if needed
 

@@ -29,7 +29,7 @@ REPO_ROOT      = /sdf/data/atlas/u/jkrupa/hepemshow/hepemshow
 FORWARD_BIN    = $REPO_ROOT/build/HepEmShow            # forward-mode AD (CoDiPack)
 REVERSE_BIN    = $REPO_ROOT/build_reverse/HepEmShow    # reverse-mode AD (CoDiPack)
 HEPEM_DATA     = $REPO_ROOT/data/hepem_data.json
-AGENTIC_DIR    = $REPO_ROOT/build/hepemshow_utils/agentic   # you are here
+AGENTIC_DIR    = <this repository root>                      # you are here
 ```
 
 All four of the first paths are confirmed to exist and are used by the existing
@@ -193,10 +193,10 @@ first — the CMake builds under `$REPO_ROOT/build*` are slow and shared.
 1. **Verify the tool layer.** Run `python -m tools.sim --selftest`; fix any path
    or parsing mismatch against the real binaries. (Highest priority — everything
    builds on this.)
-2. **Flesh out `tools/observables.py`.** Implement the derived observables in
-   `docs/SIMULATION_INTERFACE.md` §Observables (total edep, shower max,
-   longitudinal containment, sampling fraction, resolution proxy) with unit tests
-   on a cached tiny run.
+2. **Flesh out `tools/observables.py`.** Implement/extend the derived observables
+  in `docs/SIMULATION_INTERFACE.md` §Observables (total edep, peak edep,
+  shower max depth, visible fraction, front fraction) with unit tests on a
+  cached tiny run.
 3. **Implement `tools/reliability.py`.** Gradient SNR + optional AD-vs-FD
    cross-check → a `ReliabilityFlag` (`ok` / `marginal` / `untrusted`).
 4. **Wire the tool registry** (`agent/tool_registry.py`) so each tool has a JSON

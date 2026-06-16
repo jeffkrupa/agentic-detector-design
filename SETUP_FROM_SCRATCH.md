@@ -180,12 +180,13 @@ into the Python self-test below.
 
 ## 6. Python analysis/agent layer
 
-The repo ships a Python layer under
-`hepemshow/build/hepemshow_utils/agentic/` (tool wrappers, schemas, reliability,
-plus the design docs). Set it up in a venv:
+Clone this standalone repository for the Python layer (tool wrappers, schemas,
+reliability, and design docs), then set it up in a venv:
 
 ```bash
-cd "$WORK/hepemshow/build/hepemshow_utils/agentic"
+cd "$WORK"
+git clone git@github.com:jeffkrupa/agentic-detector-design.git
+cd "$WORK/agentic-detector-design"
 python3.9 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
