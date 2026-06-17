@@ -1,0 +1,30 @@
+{
+  "primary": {
+    "n_layers": 20,
+    "k_list": [
+      1,
+      2,
+      4
+    ],
+    "table": [
+      {
+        "K": 1,
+        "final_loss": 10691.860105236192,
+        "ratio": 1.0
+      },
+      {
+        "K": 2,
+        "final_loss": 8775.268128717511,
+        "ratio": 0.8207428868639932
+      },
+      {
+        "K": 4,
+        "final_loss": 8888.599534248307,
+        "ratio": 0.8313426706635675
+      }
+    ],
+    "mostly_monotone": true,
+    "discriminates": false
+  },
+  "robust": {}
+}
