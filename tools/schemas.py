@@ -19,13 +19,35 @@ RELIABILITY_LEVELS = ("untrusted", "marginal", "ok")
 
 @dataclass(frozen=True)
 class DesignPoint:
-    """A point in the (continuous + discrete) design space."""
-    a: float            # absorber thickness [mm]
-    g: float            # gap thickness [mm]
+    """A point in the (continuous + discrete) design space.
+
+    ``a``/``g`` are the scalar (broadcast-to-all-layers) absorber/gap
+    thicknesses. Optionally, ``abs_profile``/``gap_profile`` carry an explicit
+    per-layer thickness vector (length == ``n_layers``). When a profile is set
+    it overrides the corresponding scalar at the simulation layer (``a``/``g``
+    are still kept for provenance / nominal value but are not used to build the
+    geometry flags). Profiles are stored as immutable tuples of floats so the
+    dataclass stays hashable/frozen.
+    """
+    a: float            # absorber thickness [mm] (scalar / nominal)
+    g: float            # gap thickness [mm] (scalar / nominal)
     energy: float       # beam energy [MeV]
     n_layers: int = 50
     transverse: float = 400.0
     particle: str = "e-"
+    abs_profile: Optional[tuple] = None   # per-layer absorber thickness [mm]
+    gap_profile: Optional[tuple] = None   # per-layer gap thickness [mm]
+
+    def __post_init__(self):
+        for name in ("abs_profile", "gap_profile"):
+            val = getattr(self, name)
+            if val is None:
+                continue
+            coerced = tuple(float(x) for x in val)
+            if len(coerced) != int(self.n_layers):
+                raise ValueError(
+                    f"{name} length {len(coerced)} != n_layers {self.n_layers}")
+            object.__setattr__(self, name, coerced)
 
     def with_param(self, name: str, value: float) -> "DesignPoint":
         """Return a copy with one differentiable parameter changed."""
@@ -161,3 +183,67 @@ def worst_reliability(*levels: str) -> str:
     """Return the most pessimistic reliability level among the arguments."""
     idx = min(RELIABILITY_LEVELS.index(l) for l in levels)
     return RELIABILITY_LEVELS[idx]
+
+
+# --------------------------------------------------------------------------- #
+# Per-region / per-layer design helpers
+# --------------------------------------------------------------------------- #
+@dataclass
+class Region:
+    """A contiguous block of layers sharing one absorber/gap thickness.
+
+    The range is **half-open**: ``[start, end)`` covers layer indices
+    ``start, start+1, ..., end-1`` (``end`` itself is NOT included).
+    """
+    start: int
+    end: int
+    absorber_mm: float
+    gap_mm: float
+
+
+def regions_to_profiles(regions, n_layers):
+    """Expand a list of ``Region`` into ``(abs_tuple, gap_tuple)`` of len n_layers.
+
+    The regions must exactly tile ``[0, n_layers)``: sorted by ``start``,
+    contiguous (each region's ``start`` == previous region's ``end``), no gaps,
+    no overlaps, first ``start == 0`` and last ``end == n_layers``. Otherwise a
+    ``ValueError`` is raised. Each region broadcasts its ``absorber_mm`` /
+    ``gap_mm`` across its member layers.
+    """
+    n_layers = int(n_layers)
+    if not regions:
+        raise ValueError("regions must be a non-empty list")
+    ordered = sorted(regions, key=lambda r: r.start)
+    abs_vals = [0.0] * n_layers
+    gap_vals = [0.0] * n_layers
+    cursor = 0
+    for r in ordered:
+        s, e = int(r.start), int(r.end)
+        if s != cursor:
+            raise ValueError(
+                f"regions do not tile [0,{n_layers}) contiguously: expected "
+                f"start={cursor}, got region [{s},{e})")
+        if e <= s:
+            raise ValueError(f"region [{s},{e}) is empty or reversed")
+        if e > n_layers:
+            raise ValueError(f"region [{s},{e}) extends past n_layers={n_layers}")
+        for i in range(s, e):
+            abs_vals[i] = float(r.absorber_mm)
+            gap_vals[i] = float(r.gap_mm)
+        cursor = e
+    if cursor != n_layers:
+        raise ValueError(
+            f"regions tile only [0,{cursor}) but n_layers={n_layers}")
+    return tuple(abs_vals), tuple(gap_vals)
+
+
+def profiles_from_design(dp, n_layers):
+    """Return ``(abs_tuple, gap_tuple)`` for a DesignPoint.
+
+    Uses ``dp.abs_profile``/``dp.gap_profile`` when set, otherwise broadcasts
+    the scalar ``dp.a``/``dp.g`` across all ``n_layers``.
+    """
+    n_layers = int(n_layers)
+    abs_t = dp.abs_profile if dp.abs_profile is not None else tuple([float(dp.a)] * n_layers)
+    gap_t = dp.gap_profile if dp.gap_profile is not None else tuple([float(dp.g)] * n_layers)
+    return abs_t, gap_t

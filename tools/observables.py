@@ -127,8 +127,18 @@ def observe(name: str, dp: DesignPoint, n_events: Optional[int] = None,
     cfg = _sim.load_config()
     n_events = n_events or int(cfg["stats"]["dev_events"])
     seeds = _seeds(seeds, cfg)
-    # any forward run yields the per-layer means; seed 'a' arbitrarily.
-    mean_arr, n_total, _ = _sim.forward_profile_multiseed(dp, "a", n_events, seeds, ctrl=ctrl)
+    # Any forward run yields the per-layer mean edep (column 0), independent of
+    # which differentiable input carries the forward-AD dot. We only need the
+    # VALUE here, so the choice of seeded param is irrelevant to the result.
+    # When a per-layer profile is set, sim.py forbids seeding the corresponding
+    # scalar ('a'/'g'); use a profile-safe seed ('energy', which is always
+    # allowed) so measuring a per-region (profile) design does not crash.
+    # For scalar (non-profile) designs we keep seeding 'a' so existing numbers
+    # are byte-for-byte unchanged (column 0 is identical regardless of seed).
+    _seed_param = "a"
+    if dp.abs_profile is not None or dp.gap_profile is not None:
+        _seed_param = "energy"
+    mean_arr, n_total, _ = _sim.forward_profile_multiseed(dp, _seed_param, n_events, seeds, ctrl=ctrl)
     if mean_arr is None:
         return Observation(name, float("nan"), float("inf"), dp, 0)
     m = mean_arr[:, 0]

@@ -108,6 +108,12 @@ def _common_args(dp: DesignPoint, ctrl: CtrlFlags, n_events: int, seed: int,
     def maybe_seed(name: str, value) -> str:
         return f"{value}:1" if name == seeded_param else f"{value}"
 
+    # A per-layer profile cannot also be forward-seeded as a scalar input.
+    if dp.abs_profile is not None and seeded_param == "a":
+        raise ValueError("cannot seed scalar 'a' when abs_profile is set")
+    if dp.gap_profile is not None and seeded_param == "g":
+        raise ValueError("cannot seed scalar 'g' when gap_profile is set")
+
     args = [
         "-d", data,
         "-n", str(int(n_events)),
@@ -116,10 +122,18 @@ def _common_args(dp: DesignPoint, ctrl: CtrlFlags, n_events: int, seed: int,
         "-l", str(int(dp.n_layers)),
         "-t", str(dp.transverse),
         "-e", maybe_seed("energy", dp.energy),
-        "-a", maybe_seed("a", dp.a),
-        "-g", maybe_seed("g", dp.g),
-        "-v", "0",
     ]
+    # Absorber geometry: per-layer profile overrides scalar.
+    if dp.abs_profile is not None:
+        args += ["--abs-profile", ":".join(repr(float(x)) for x in dp.abs_profile)]
+    else:
+        args += ["-a", maybe_seed("a", dp.a)]
+    # Gap geometry: per-layer profile overrides scalar.
+    if dp.gap_profile is not None:
+        args += ["--gap-profile", ":".join(repr(float(x)) for x in dp.gap_profile)]
+    else:
+        args += ["-g", maybe_seed("g", dp.g)]
+    args += ["-v", "0"]
     args += ctrl.to_cli_args()
     return args
 
@@ -168,6 +182,21 @@ def _parse_bar_inputs(path: Path) -> np.ndarray:
     if arr.ndim == 1:
         arr = arr.reshape(-1, 2)
     # rows: [absorber, gap, energy]; cols: [mean, var]
+    return arr
+
+
+def _parse_bar_inputs_per_layer(path: Path) -> np.ndarray:
+    """Parse the per-layer reverse output file (``barInputsPerLayer``).
+
+    Returns shape ``(2N+1, 2)`` with columns ``[mean, var]``:
+      * rows ``0 .. N-1``   : d(objective)/d(abs_thick[i])
+      * rows ``N .. 2N-1``  : d(objective)/d(gap_thick[i])
+      * row  ``2N``         : d(objective)/d(energy)
+    The ``#`` header line (if present) is skipped by ``np.loadtxt``.
+    """
+    arr = np.loadtxt(path)
+    if arr.ndim == 1:
+        arr = arr.reshape(-1, 2)
     return arr
 
 
@@ -225,6 +254,48 @@ def run_reverse(dp: DesignPoint, adjoints: np.ndarray, n_events: int, seed: int,
                   mode="reverse", seeded_param=None, returncode=rc, nan=nan)
 
 
+def run_reverse_per_layer(dp: DesignPoint, adjoints: np.ndarray, n_events: int,
+                          seed: int, ctrl: Optional[CtrlFlags] = None,
+                          use_cache: bool = True) -> np.ndarray:
+    """Reverse-mode run returning the **per-layer** gradient array.
+
+    Same invocation as :func:`run_reverse` (``adjoints`` are per-layer output
+    bars, len == n_layers) but parses the ``barInputsPerLayer`` file instead of
+    the legacy 3-row ``barInputs``.
+
+    Returns the ``(2N+1, 2)`` array with columns ``[mean, var]``:
+      * rows ``0 .. N-1``   : d(objective)/d(abs_thick[i])
+      * rows ``N .. 2N-1``  : d(objective)/d(gap_thick[i])
+      * row  ``2N``         : d(objective)/d(energy)
+
+    Returns ``None`` if the run failed. Uses a cache namespace distinct from
+    :func:`run_reverse` (via a ``"__perlayer__"`` marker baked into the key) so
+    the two never collide on disk.
+    """
+    cfg = load_config()
+    ctrl = ctrl or ctrl_flags_from_config(cfg)
+    binary = cfg["paths"]["reverse_bin"]
+    adj = np.asarray(adjoints, dtype=float).ravel()
+    if adj.size != dp.n_layers:
+        raise ValueError(f"adjoints length {adj.size} != n_layers {dp.n_layers}")
+    args = _common_args(dp, ctrl, n_events, seed, cfg, seeded_param=None)
+    args += ["-b", ":".join(repr(float(x)) for x in adj)]
+    # Distinct cache namespace so per-layer results never collide with the
+    # legacy 3-row run that shares the identical command line.
+    key = _flag_hash(binary, ["__perlayer__", *args])
+
+    if use_cache:
+        cached = _cache_load(cfg, key)
+        if cached is not None:
+            arr = cached.get("bar_inputs_per_layer")
+            return arr if arr is not None else None
+
+    arr, rc, nan = _execute(binary, args, expect="barInputsPerLayer", seed=seed)
+    if use_cache and rc == 0 and arr is not None:
+        _cache_store(cfg, key, bar_inputs_per_layer=arr, rc=rc, nan=nan)
+    return arr
+
+
 def _execute(binary: str, args: list, expect: str, seed: int):
     """Run the binary in an isolated temp dir and parse the expected output."""
     if not Path(binary).exists():
@@ -242,6 +313,12 @@ def _execute(binary: str, args: list, expect: str, seed: int):
             if rc != 0 or not out.exists():
                 return None, rc, True
             arr = _parse_edeps(out)
+            return arr, rc, bool(np.isnan(arr).any())
+        elif expect == "barInputsPerLayer":
+            out = Path(wd) / "barInputsPerLayer"
+            if rc != 0 or not out.exists():
+                return None, rc, True
+            arr = _parse_bar_inputs_per_layer(out)
             return arr, rc, bool(np.isnan(arr).any())
         else:
             out = Path(wd) / "barInputs"
@@ -287,6 +364,73 @@ def reverse_gradient_multiseed(dp: DesignPoint, adjoints: np.ndarray, n_events: 
     grad_d = {k: float(grad[i]) for i, k in enumerate(keys)}
     se_d = {k: float(se[i]) for i, k in enumerate(keys)}
     return grad_d, se_d, n_total
+
+
+def reverse_per_layer_gradients_multiseed(dp: DesignPoint, adjoints: np.ndarray,
+                                          n_events: int, seeds,
+                                          ctrl: Optional[CtrlFlags] = None):
+    """Average the per-layer reverse gradient over seeds.
+
+    Analogous to :func:`reverse_gradient_multiseed` but for the per-layer
+    ``barInputsPerLayer`` output. Returns a dict with per-layer means and
+    standard errors (of the mean), or ``None`` if no seed succeeded::
+
+        {
+          "absorber_grad":   np.ndarray (N,),   # mean d(obj)/d(abs_thick[i])
+          "absorber_stderr": np.ndarray (N,),
+          "gap_grad":        np.ndarray (N,),   # mean d(obj)/d(gap_thick[i])
+          "gap_stderr":      np.ndarray (N,),
+          "energy_grad":     float,             # mean d(obj)/d(energy)
+          "energy_stderr":   float,
+          "n_total":         int,               # n_events * n_ok_seeds
+          "n_layers":        int,
+        }
+    """
+    runs = [run_reverse_per_layer(dp, adjoints, n_events, s, ctrl=ctrl) for s in seeds]
+    ok = [r for r in runs if r is not None and not bool(np.isnan(r).any())]
+    if not ok:
+        return None
+    N = int(dp.n_layers)
+    stack = np.stack(ok, axis=0)            # (n_ok, 2N+1, 2)
+    means = stack[:, :, 0]                  # (n_ok, 2N+1)
+    vars_ = stack[:, :, 1]                  # (n_ok, 2N+1)
+    n_total = n_events * len(ok)
+    grad = means.mean(axis=0)              # (2N+1,)
+    se = np.sqrt(vars_.mean(axis=0) / n_total)
+    return {
+        "absorber_grad": grad[0:N].copy(),
+        "absorber_stderr": se[0:N].copy(),
+        "gap_grad": grad[N:2 * N].copy(),
+        "gap_stderr": se[N:2 * N].copy(),
+        "energy_grad": float(grad[2 * N]),
+        "energy_stderr": float(se[2 * N]),
+        "n_total": n_total,
+        "n_layers": N,
+    }
+
+
+def region_gradients(regions, per_layer_grads: np.ndarray, n_layers: int) -> dict:
+    """Aggregate per-layer gradients into per-region gradients.
+
+    ``per_layer_grads`` is the ``(2N+1, 2)`` array returned by
+    :func:`run_reverse_per_layer` (column 0 = mean). Each region's gradient is
+    the **sum** of its member layers' per-layer gradient means (half-open
+    ``[start, end)``).
+
+    Returns ``{region_index: {"absorber": float, "gap": float}}``.
+    """
+    N = int(n_layers)
+    arr = np.asarray(per_layer_grads, dtype=float)
+    abs_g = arr[0:N, 0]
+    gap_g = arr[N:2 * N, 0]
+    out = {}
+    for idx, r in enumerate(regions):
+        s, e = int(r.start), int(r.end)
+        out[idx] = {
+            "absorber": float(abs_g[s:e].sum()),
+            "gap": float(gap_g[s:e].sum()),
+        }
+    return out
 
 
 # --------------------------------------------------------------------------- #
