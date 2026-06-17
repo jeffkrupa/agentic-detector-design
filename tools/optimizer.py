@@ -617,6 +617,252 @@ def optimize_inner_profile(
     )
 
 
+def optimize_inner_containment(
+    rep: DesignRepresentation,
+    contain_target: float,
+    e_beam: float,
+    lam: float,
+    mu: float,
+    constraints=None,
+    max_iters: int = 12,
+    n_events: int = 1000,
+    seeds: Sequence[int] = (1,),
+    ctrl: Optional[CtrlFlags] = None,
+    lr: float = _DEFAULT_LR,
+    trust_region: float = 0.05,
+    snr_floor: float = _DEFAULT_SNR_FLOOR,
+    tol: float = 1e-4,
+) -> InnerResult:
+    """Tune per-region thicknesses toward minimum-length CONTAINMENT.
+
+    Mirrors :func:`optimize_inner_profile` but the loss is the minimum-length
+    containment objective (see ``tools.containment_target``)::
+
+        L = (lam/2) relu(contain_target - total_edep/e_beam)^2
+            + mu sum_r n_r (a_r + g_r)
+
+    Each iteration measures the scalar ``total_edep`` (one forward via
+    ``observe``), forms the UNIFORM per-layer adjoint vector ``w`` (all layers
+    share ``w_l = -lam relu(...)/e_beam <= 0``), runs one reverse pass
+    (``run_reverse_per_layer``) and ``region_gradients`` to get the per-region
+    CONTAINMENT gradient (negative -> pushes thickness UP), then ADDS the
+    EXPLICIT length-term gradient ``mu*n_r`` (positive -> pushes thickness DOWN)
+    into each region's absorber/gap gradient. The combined gradient feeds the
+    same trust-region GD step + box projection + ``SetRegionThickness`` write-back
+    as the profile optimizer. The interior optimum balances the two terms; tail
+    regions (small containment gradient) are driven thin by the length cost while
+    front regions go thick -> non-uniform.
+
+    Returns an :class:`InnerResult`; ``final_objective`` carries the final loss
+    and ``final_residual`` mirrors it (no scalar target). History entries store
+    ``loss``, mirror it into ``objective``, and additionally record
+    ``total_edep`` and ``containment_frac``.
+    """
+    from .containment_target import (
+        containment_loss, containment_adjoints, length_region_grad,
+    )
+
+    seeds = tuple(int(s) for s in seeds)
+    box = _param_box(constraints)
+    abs_bound = box.get("a")
+    gap_bound = box.get("g")
+    use_snr = len(seeds) > 1
+    e_beam = float(e_beam)
+
+    history: list = []
+    pred_vs_real: list = []
+
+    cur = rep
+    converged = False
+
+    last_loss = None
+    last_pred_dloss = None
+    last_iter_idx = None
+
+    for it in range(max_iters):
+        dp = cur.to_design_point()
+
+        # ----- measure scalar total_edep -> loss --------------------------- #
+        obs = _obs.observe("total_edep", dp, n_events=n_events,
+                           seeds=list(seeds), ctrl=ctrl)
+        total_edep = float(obs.value)
+        if np.isnan(total_edep):
+            hist_entry = {
+                "iter": it, "objective": float("nan"),
+                "residual": float("nan"), "loss": float("nan"),
+                "total_edep": float("nan"), "containment_frac": float("nan"),
+                "region_grads": [{"absorber": 0.0, "gap": 0.0} for _ in cur.regions],
+                "step": [{"absorber": 0.0, "gap": 0.0} for _ in cur.regions],
+            }
+            history.append(hist_entry)
+            break
+        frac = total_edep / e_beam
+        loss = containment_loss(
+            total_edep, contain_target, e_beam, lam, mu, cur.regions)
+
+        # Honesty bookkeeping: realized change vs the prediction made last step.
+        if last_loss is not None:
+            realized = loss - last_loss
+            pred_vs_real.append({
+                "iter": last_iter_idx,
+                "predicted_dloss": float(last_pred_dloss),
+                "realized_dloss": float(realized),
+            })
+
+        hist_entry = {
+            "iter": it,
+            "objective": loss,      # mirror loss into objective for InnerResult
+            "residual": loss,
+            "loss": loss,
+            "total_edep": total_edep,
+            "containment_frac": frac,
+            "region_grads": None,
+            "step": None,
+        }
+
+        # Convergence on the loss itself -> stop (zero-step terminal entry).
+        if loss < tol:
+            converged = True
+            hist_entry["region_grads"] = [
+                {"absorber": 0.0, "gap": 0.0} for _ in cur.regions]
+            hist_entry["step"] = [
+                {"absorber": 0.0, "gap": 0.0} for _ in cur.regions]
+            history.append(hist_entry)
+            break
+
+        # ----- uniform per-layer adjoints w_l (containment term) ----------- #
+        w = containment_adjoints(
+            total_edep, contain_target, e_beam, lam, cur.n_layers)
+
+        # ----- reverse pass -> per-region CONTAINMENT gradients ------------ #
+        per_layer = _sim.run_reverse_per_layer(
+            dp, adjoints=w, n_events=n_events, seed=seeds[0], ctrl=ctrl)
+        if per_layer is None or bool(np.isnan(per_layer).any()):
+            hist_entry["region_grads"] = [
+                {"absorber": 0.0, "gap": 0.0} for _ in cur.regions]
+            hist_entry["step"] = [
+                {"absorber": 0.0, "gap": 0.0} for _ in cur.regions]
+            history.append(hist_entry)
+            break
+        rgrad = _sim.region_gradients(cur.regions, per_layer, cur.n_layers)
+
+        # ----- ADD explicit length-term gradient (mu*n_r) ------------------ #
+        lgrad = length_region_grad(cur.regions, mu)
+        for ridx in range(cur.n_regions):
+            rgrad[ridx]["absorber"] += lgrad[ridx]["absorber"]
+            rgrad[ridx]["gap"] += lgrad[ridx]["gap"]
+
+        # ----- optional SNR gating (multiseed) ----------------------------- #
+        # SNR is computed on the CONTAINMENT (simulated) gradient only; the
+        # length term is exact (zero noise) so it is folded in afterwards.
+        region_snr_abs = None
+        region_snr_gap = None
+        if use_snr:
+            ms = _sim.reverse_per_layer_gradients_multiseed(
+                dp, adjoints=w, n_events=n_events, seeds=list(seeds), ctrl=ctrl)
+            if ms is not None:
+                abs_se = np.asarray(ms["absorber_stderr"], dtype=float)
+                gap_se = np.asarray(ms["gap_stderr"], dtype=float)
+                region_snr_abs = {}
+                region_snr_gap = {}
+                for ridx, r in enumerate(cur.regions):
+                    s, e = int(r.start), int(r.end)
+                    se_a = float(np.sqrt(np.sum(abs_se[s:e] ** 2)))
+                    se_g = float(np.sqrt(np.sum(gap_se[s:e] ** 2)))
+                    ga = rgrad[ridx]["absorber"]
+                    gg = rgrad[ridx]["gap"]
+                    region_snr_abs[ridx] = abs(ga) / se_a if se_a > 0 else np.inf
+                    region_snr_gap[ridx] = abs(gg) / se_g if se_g > 0 else np.inf
+
+        # ----- build raw GD step per region, gate by SNR ------------------- #
+        raw_abs = np.zeros(cur.n_regions)
+        raw_gap = np.zeros(cur.n_regions)
+        for ridx in range(cur.n_regions):
+            ga = rgrad[ridx]["absorber"]
+            gg = rgrad[ridx]["gap"]
+            take_a = True
+            take_g = True
+            if region_snr_abs is not None:
+                take_a = region_snr_abs[ridx] >= snr_floor
+                take_g = region_snr_gap[ridx] >= snr_floor
+            raw_abs[ridx] = (-lr * ga) if take_a else 0.0
+            raw_gap[ridx] = (-lr * gg) if take_g else 0.0
+
+        # ----- trust-region normalization (inf-norm cap) ------------------- #
+        max_mag = max(float(np.max(np.abs(raw_abs))) if raw_abs.size else 0.0,
+                      float(np.max(np.abs(raw_gap))) if raw_gap.size else 0.0)
+        if max_mag > trust_region and max_mag > 0:
+            scale = trust_region / max_mag
+            raw_abs = raw_abs * scale
+            raw_gap = raw_gap * scale
+
+        # No reliable improving direction -> stop.
+        if max_mag == 0.0:
+            hist_entry["region_grads"] = [
+                {"absorber": rgrad[i]["absorber"], "gap": rgrad[i]["gap"]}
+                for i in range(cur.n_regions)]
+            hist_entry["step"] = [
+                {"absorber": 0.0, "gap": 0.0} for _ in cur.regions]
+            history.append(hist_entry)
+            break
+
+        # ----- apply step + project to feasibility ------------------------- #
+        applied_step = []
+        new_rep = cur
+        grad_vec = []
+        step_vec = []
+        for ridx in range(cur.n_regions):
+            r = cur.regions[ridx]
+            new_a = _clip(r.absorber_mm + raw_abs[ridx], abs_bound)
+            new_g = _clip(r.gap_mm + raw_gap[ridx], gap_bound)
+            d_a = new_a - r.absorber_mm
+            d_g = new_g - r.gap_mm
+            applied_step.append({"absorber": d_a, "gap": d_g})
+            grad_vec.append(rgrad[ridx]["absorber"])
+            grad_vec.append(rgrad[ridx]["gap"])
+            step_vec.append(d_a)
+            step_vec.append(d_g)
+            new_rep = apply_move(new_rep, SetRegionThickness(
+                region_index=ridx, absorber_mm=new_a, gap_mm=new_g,
+                justification="inner-AD containment step"))
+
+        predicted_dloss = float(np.dot(np.array(grad_vec), np.array(step_vec)))
+
+        hist_entry["region_grads"] = [
+            {"absorber": rgrad[i]["absorber"], "gap": rgrad[i]["gap"]}
+            for i in range(cur.n_regions)]
+        hist_entry["step"] = applied_step
+        history.append(hist_entry)
+
+        last_loss = loss
+        last_pred_dloss = predicted_dloss
+        last_iter_idx = it
+        cur = new_rep
+
+    if history:
+        final_objective = history[-1]["objective"]
+        final_residual = history[-1]["residual"]
+    else:  # pragma: no cover -- max_iters==0
+        dp = cur.to_design_point()
+        obs = _obs.observe("total_edep", dp, n_events=n_events,
+                           seeds=list(seeds), ctrl=ctrl)
+        total_edep = float(obs.value)
+        final_objective = containment_loss(
+            total_edep, contain_target, e_beam, lam, mu, cur.regions)
+        final_residual = final_objective
+
+    return InnerResult(
+        final_rep=cur,
+        history=history,
+        final_objective=float(final_objective),
+        final_residual=float(final_residual),
+        n_events=int(n_events),
+        seeds=seeds,
+        converged=bool(converged),
+        predicted_vs_realized=pred_vs_real,
+    )
+
+
 def _value_means(dp: DesignPoint, n_events, seeds, ctrl):
     """Per-layer edep mean vector (column 0) for a (possibly profile) design.
 
