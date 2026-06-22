@@ -200,6 +200,37 @@ def _parse_bar_inputs_per_layer(path: Path) -> np.ndarray:
     return arr
 
 
+def run_forward_gap(dp: DesignPoint, seeded_param: str, n_events: int, seed: int,
+                    ctrl: Optional[CtrlFlags] = None, use_cache: bool = True) -> np.ndarray:
+    """Forward-mode run returning the **per-layer GAP energy** (sampled signal).
+
+    Same invocation as :func:`run_forward` but parses the ``edeps_gap_<seed>``
+    file (identical 4-column layout ``[mean_E, var_E, mean_dE, var_dE]``) that
+    the binary writes alongside the combined ``edeps_<seed>``. The absorber
+    energy is ``combined - gap`` (no separate output). Returns the ``(nlayers, 4)``
+    array, or ``None`` if the run failed. Uses a cache namespace distinct from
+    :func:`run_forward` via a ``"__gap__"`` marker baked into the key.
+    """
+    if seeded_param not in DIFFERENTIABLE_PARAMS:
+        raise ValueError(f"seeded_param must be one of {DIFFERENTIABLE_PARAMS}")
+    cfg = load_config()
+    ctrl = ctrl or ctrl_flags_from_config(cfg)
+    binary = cfg["paths"]["forward_bin"]
+    args = _common_args(dp, ctrl, n_events, seed, cfg, seeded_param=seeded_param)
+    key = _flag_hash(binary, ["__gap__", *args])
+
+    if use_cache:
+        cached = _cache_load(cfg, key)
+        if cached is not None:
+            arr = cached.get("edeps_gap")
+            return arr if arr is not None else None
+
+    arr, rc, nan = _execute(binary, args, expect="edeps_gap", seed=seed)
+    if use_cache and rc == 0 and arr is not None:
+        _cache_store(cfg, key, edeps_gap=arr, rc=rc, nan=nan)
+    return arr
+
+
 def run_forward(dp: DesignPoint, seeded_param: str, n_events: int, seed: int,
                 ctrl: Optional[CtrlFlags] = None, use_cache: bool = True) -> RawRun:
     """Forward-mode run seeding exactly one differentiable input."""
@@ -227,8 +258,17 @@ def run_forward(dp: DesignPoint, seeded_param: str, n_events: int, seed: int,
 
 
 def run_reverse(dp: DesignPoint, adjoints: np.ndarray, n_events: int, seed: int,
-                ctrl: Optional[CtrlFlags] = None, use_cache: bool = True) -> RawRun:
-    """Reverse-mode run; ``adjoints`` are per-layer output bars (len = n_layers)."""
+                ctrl: Optional[CtrlFlags] = None, use_cache: bool = True,
+                gap_adjoints: Optional[np.ndarray] = None) -> RawRun:
+    """Reverse-mode run; ``adjoints`` are per-layer output bars (len = n_layers).
+
+    ``gap_adjoints`` (optional, len = n_layers) additionally seeds the per-layer
+    **GAP** energy outputs via ``--bar-gap``. The returned ``barInputs`` then
+    reflect d/d(design) of ``sum_l(adjoints[l]*E_l + gap_adjoints[l]*E_gap,l)``.
+    Pass ``adjoints`` all-zero with ``gap_adjoints`` set to differentiate a pure
+    gap-signal objective. When ``gap_adjoints`` is None the behaviour and command
+    line are unchanged (combined-energy path only).
+    """
     cfg = load_config()
     ctrl = ctrl or ctrl_flags_from_config(cfg)
     binary = cfg["paths"]["reverse_bin"]
@@ -237,6 +277,11 @@ def run_reverse(dp: DesignPoint, adjoints: np.ndarray, n_events: int, seed: int,
         raise ValueError(f"adjoints length {adj.size} != n_layers {dp.n_layers}")
     args = _common_args(dp, ctrl, n_events, seed, cfg, seeded_param=None)
     args += ["-b", ":".join(repr(float(x)) for x in adj)]
+    if gap_adjoints is not None:
+        gadj = np.asarray(gap_adjoints, dtype=float).ravel()
+        if gadj.size != dp.n_layers:
+            raise ValueError(f"gap_adjoints length {gadj.size} != n_layers {dp.n_layers}")
+        args += ["--bar-gap", ":".join(repr(float(x)) for x in gadj)]
     key = _flag_hash(binary, args)
 
     if use_cache:
@@ -309,6 +354,15 @@ def _execute(binary: str, args: list, expect: str, seed: int):
             if not out.exists():
                 # some builds name it without seed suffix; fall back to glob
                 cand = list(Path(wd).glob("edeps_*"))
+                out = cand[0] if cand else out
+            if rc != 0 or not out.exists():
+                return None, rc, True
+            arr = _parse_edeps(out)
+            return arr, rc, bool(np.isnan(arr).any())
+        elif expect == "edeps_gap":
+            out = Path(wd) / f"edeps_gap_{seed}"
+            if not out.exists():
+                cand = list(Path(wd).glob("edeps_gap_*"))
                 out = cand[0] if cand else out
             if rc != 0 or not out.exists():
                 return None, rc, True

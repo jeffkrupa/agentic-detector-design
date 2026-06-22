@@ -1,0 +1,649 @@
+diff --git a/HepEmShow.cc b/HepEmShow.cc
+index a626f87..f5b9672 100644
+--- a/HepEmShow.cc
++++ b/HepEmShow.cc
+@@ -113,6 +113,31 @@ int main(int argc, char* argv[]) {
+   theGeometry.SetGapThick(theInputParameters.fGeometry.fThicknessGap);
+   theGeometry.SetCaloSizeYZ(theInputParameters.fGeometry.fSizeTransverse);
+ 
++  // optional per-layer overrides, applied after the uniform initializers above.
++  // precedence: uniform (-a/-g) -> full profile -> single-layer override.
++  if (!theInputParameters.fGeometry.fAbsProfile.empty()) {
++    if ((int)theInputParameters.fGeometry.fAbsProfile.size() != theGeometry.GetNumLayers()) {
++      std::cerr << "*** --abs-profile length (" << theInputParameters.fGeometry.fAbsProfile.size()
++                << ") must equal the number of layers (" << theGeometry.GetNumLayers() << ")" << std::endl;
++      return -1;
++    }
++    theGeometry.SetAbsProfile(theInputParameters.fGeometry.fAbsProfile);
++  }
++  if (!theInputParameters.fGeometry.fGapProfile.empty()) {
++    if ((int)theInputParameters.fGeometry.fGapProfile.size() != theGeometry.GetNumLayers()) {
++      std::cerr << "*** --gap-profile length (" << theInputParameters.fGeometry.fGapProfile.size()
++                << ") must equal the number of layers (" << theGeometry.GetNumLayers() << ")" << std::endl;
++      return -1;
++    }
++    theGeometry.SetGapProfile(theInputParameters.fGeometry.fGapProfile);
++  }
++  if (theInputParameters.fGeometry.fAbsLayerIdx >= 0) {
++    theGeometry.SetAbsThickLayer(theInputParameters.fGeometry.fAbsLayerIdx, theInputParameters.fGeometry.fAbsLayerVal);
++  }
++  if (theInputParameters.fGeometry.fGapLayerIdx >= 0) {
++    theGeometry.SetGapThickLayer(theInputParameters.fGeometry.fGapLayerIdx, theInputParameters.fGeometry.fGapLayerVal);
++  }
++
+ 
+   // `PrimaryGenerator` is used to produce primary particle/track when starting a new event
+   // here we construct the primary generator and set its configurable properties like
+@@ -133,17 +158,33 @@ int main(int argc, char* argv[]) {
+   Results theResult;
+   theResult.fEdepPerLayer.ReSet("hist_Edep_PerLayer", 0, theGeometry.GetNumLayers(), theGeometry.GetNumLayers());
+   theResult.fEdepPerLayer_CurrentEvent.ReSet("hist_Edep_PerLayer_CurrentEvent", 0, theGeometry.GetNumLayers(), theGeometry.GetNumLayers());
+-  theResult.fEdepPerLayer_Acc.resize(50);
++  // per-layer GAP energy histograms (parallel to the combined per-layer energy above)
++  theResult.fEdepGapPerLayer.ReSet("hist_EdepGap_PerLayer", 0, theGeometry.GetNumLayers(), theGeometry.GetNumLayers());
++  theResult.fEdepGapPerLayer_CurrentEvent.ReSet("hist_EdepGap_PerLayer_CurrentEvent", 0, theGeometry.GetNumLayers(), theGeometry.GetNumLayers());
++  const int nLayers = theGeometry.GetNumLayers();
++  theResult.fEdepPerLayer_Acc.resize(nLayers);
++  theResult.fEdepGapPerLayer_Acc.resize(nLayers);
+   #ifdef CODI_FORWARD
+-    theResult.fEdepPerLayer_AccD.resize(50);
++    theResult.fEdepPerLayer_AccD.resize(nLayers);
++    theResult.fEdepGapPerLayer_AccD.resize(nLayers);
+   #endif
+   #ifdef CODI_REVERSE
+-    theResult.barEdep.resize(50,0.);
+-    for(int i=0; i<50; i++){
+-       if(i<theInputParameters.barEdep.size()){
++    theResult.barEdep.resize(nLayers,0.);
++    for(int i=0; i<nLayers; i++){
++       if(i<(int)theInputParameters.barEdep.size()){
+           theResult.barEdep[i] = theInputParameters.barEdep[i];
+        }
+     }
++    theResult.barEdepGap.resize(nLayers,0.);
++    for(int i=0; i<nLayers; i++){
++       if(i<(int)theInputParameters.barEdepGap.size()){
++          theResult.barEdepGap[i] = theInputParameters.barEdepGap[i];
++       }
++    }
++    theResult.barAbsThick.resize(nLayers);
++    theResult.barGapThick.resize(nLayers);
++    theResult.pAbsThick.resize(nLayers);
++    theResult.pGapThick.resize(nLayers);
+   #endif
+   theResult.fGammaTrackLenghtPerLayer.ReSet("hist_GamTrackL_PerLayer", 0, theGeometry.GetNumLayers(), theGeometry.GetNumLayers());
+   theResult.fElPosTrackLenghtPerLayer.ReSet("hist_ElPosTrackL_PerLayer", 0, theGeometry.GetNumLayers(), theGeometry.GetNumLayers());
+diff --git a/Simulation/include/Geometry.hh b/Simulation/include/Geometry.hh
+index 38af102..6d9b811 100644
+--- a/Simulation/include/Geometry.hh
++++ b/Simulation/include/Geometry.hh
+@@ -4,6 +4,8 @@
+ #ifndef GEOMETRY_HH
+ #define GEOMETRY_HH
+ 
++#include <vector>
++
+ /**
+  * @file    Geometry.hh
+  * @class   Geometry
+@@ -158,6 +160,12 @@ public:
+   void   SetNumLayers (int nlayers) {
+     if (nlayers > 0) {
+       fNumLayers = nlayers;
++      // resize the per-layer thickness vectors, broadcasting the current
++      // (uniform) value into any newly added layers.
++      const G4double aval = fAbsThick.empty() ? G4double(2.3) : fAbsThick.back();
++      const G4double gval = fGapThick.empty() ? G4double(5.7) : fGapThick.back();
++      fAbsThick.resize(fNumLayers, aval);
++      fGapThick.resize(fNumLayers, gval);
+       UpdateParameters();
+     }
+   }
+@@ -178,19 +186,36 @@ public:
+   }
+ 
+ 
+-  /** Sets the required absorber thickness (i.e. full size along the x-axis).
++  /** Sets the required absorber thickness uniformly for every layer.
+     * @param[in]  thickness Required thickness of the `absorber` in [mm].
+     */
+   void   SetAbsThick (G4double thickness) {
+-    fAbsThick = thickness;
++    fAbsThick.assign(fNumLayers, thickness);
+     UpdateParameters();
+   }
+ 
+-  /** Gives the thickness of the `absorber` (i.e. full size along the x-axis).
+-    * @return thickness of the `absorber` in [mm] units.
++  /** Gives the absorber thickness of the first layer (uniform/legacy accessor).
++    * @return thickness of the `absorber` of layer 0 in [mm] units.
+     */
+   G4double GetAbsThick ( ) const {
+-    return fAbsThick;
++    return fAbsThick.empty() ? G4double(0.0) : fAbsThick[0];
++  }
++
++  /** Sets the absorber thickness of a single layer. */
++  void   SetAbsThickLayer (int i, G4double thickness) {
++    if (i >= 0 && i < (int)fAbsThick.size()) {
++      fAbsThick[i] = thickness;
++      UpdateParameters();
++    }
++  }
++
++  /** Gives the absorber thickness of a single layer [mm]. */
++  G4double GetAbsThickLayer (int i) const { return fAbsThick[i]; }
++
++  /** Installs a full per-layer absorber-thickness profile (length must equal #layers). */
++  void   SetAbsProfile (const std::vector<G4double>& p) {
++    fAbsThick = p;
++    UpdateParameters();
+   }
+ 
+   /** Sets the required `gap` thickness (i.e. full size along the x-axis).
+@@ -202,15 +227,32 @@ public:
+     * @param[in]  thickness Required thickness of the `gap` in [mm] (can be set to 0).
+     */
+   void   SetGapThick (G4double thickness) {
+-    fGapThick = thickness;
++    fGapThick.assign(fNumLayers, thickness);
+     UpdateParameters();
+   }
+ 
+-  /** Gives the thickness of the `gap` (i.e. full size along the x-axis).
+-    * @return thickness of the `gap` in [mm] units.
++  /** Gives the gap thickness of the first layer (uniform/legacy accessor).
++    * @return thickness of the `gap` of layer 0 in [mm] units.
+     */
+   G4double GetGapThick ( ) const {
+-    return fGapThick;
++    return fGapThick.empty() ? G4double(0.0) : fGapThick[0];
++  }
++
++  /** Sets the gap thickness of a single layer. */
++  void   SetGapThickLayer (int i, G4double thickness) {
++    if (i >= 0 && i < (int)fGapThick.size()) {
++      fGapThick[i] = thickness;
++      UpdateParameters();
++    }
++  }
++
++  /** Gives the gap thickness of a single layer [mm]. */
++  G4double GetGapThickLayer (int i) const { return fGapThick[i]; }
++
++  /** Installs a full per-layer gap-thickness profile (length must equal #layers). */
++  void   SetGapProfile (const std::vector<G4double>& p) {
++    fGapThick = p;
++    UpdateParameters();
+   }
+ 
+ 
+@@ -341,17 +383,19 @@ private:
+     * Can be set (even to zero: calorimeter is just a single volume/box)*/
+   int    fNumLayers;
+ 
+-  /** `Absorber` thickness measured along the `x`-axis in [mm] (can be set)*/
+-  G4double fAbsThick;
++  /** Per-layer `absorber` thickness measured along the `x`-axis in [mm].
++    * Length equals `fNumLayers`. Each entry is an independent AD input. */
++  std::vector<G4double> fAbsThick;
+ 
+-  /** `Gap` thickness measured along the `x`-axis in [mm] (can be set; even to
+-    *  zero: single material `calorimeter` sliced by layers along the `x`-axis)*/
+-  G4double fGapThick;
++  /** Per-layer `gap` thickness measured along the `x`-axis in [mm] (entries may
++    *  be zero: single-material layer). Length equals `fNumLayers`. */
++  std::vector<G4double> fGapThick;
+ 
+-  /** `Layer` thickness measured along the `x` axes in [mm].
+-    *  Computed automatically (whenever the `absorber` or `gap` thickness is
+-    *  updated*/
+-  G4double fLayerThick;
++  /** Cumulative layer-start x-coordinates inside the calorimeter (length
++    *  `fNumLayers+1`, prefix sums of the per-layer thicknesses). Recomputed in
++    *  `UpdateParameters` and kept AD-active so that an upstream layer's thickness
++    *  correctly shifts all downstream layer positions. */
++  std::vector<G4double> fLayerStartX;
+ 
+   /** The thickness of the entire `calorimeter` measured along the `x` axes in [mm]
+     * Computed automatically whenever the `layer` thickness (i.e. absorber and/or
+diff --git a/Simulation/include/InputParameters.hh b/Simulation/include/InputParameters.hh
+index 3a1aca9..365c893 100644
+--- a/Simulation/include/InputParameters.hh
++++ b/Simulation/include/InputParameters.hh
+@@ -68,10 +68,18 @@ struct InputParameters {
+       fSizeTransverse(400.0) {}
+ 
+     int    fNumLayers;         ///< number of layers in the calorimeter
+-    G4double fThicknessAbsorber; ///< absorber thickness along X in [mm]
+-    G4double fThicknessGap;      ///< gap thickness along X in [mm]
++    G4double fThicknessAbsorber; ///< absorber thickness along X in [mm] (uniform initializer)
++    G4double fThicknessGap;      ///< gap thickness along X in [mm] (uniform initializer)
+     G4double fThicknessCalo;     ///< calorimeter thickness along X [mm] ONLY if number of layers is zero
+     G4double fSizeTransverse;    ///< calorimeter full size along YZ in [mm]
++
++    // Optional per-layer overrides (applied after the uniform initializers above).
++    std::vector<G4double> fAbsProfile; ///< full per-layer absorber profile (length must equal fNumLayers); empty = unused
++    std::vector<G4double> fGapProfile; ///< full per-layer gap profile (length must equal fNumLayers); empty = unused
++    int    fAbsLayerIdx = -1;  ///< single-layer absorber override index (-1 = none)
++    G4double fAbsLayerVal = 0;   ///< single-layer absorber override value [mm] (may carry a forward dot)
++    int    fGapLayerIdx = -1;  ///< single-layer gap override index (-1 = none)
++    G4double fGapLayerVal = 0;   ///< single-layer gap override value [mm] (may carry a forward dot)
+   };
+ 
+ 
+@@ -124,6 +132,7 @@ struct InputParameters {
+   G4double fUmscDispRadFloor;       ///< derivative-only floor for UMSC displacement sqrt radicand derivative
+   #ifdef CODI_REVERSE
+     std::vector<double> barEdep;     ///< Bar values of the energy depositions
++    std::vector<double> barEdepGap;  ///< Bar values of the per-layer GAP energy depositions
+   #endif
+ };
+ 
+@@ -225,6 +234,13 @@ static struct option options[] = {
+   {"umsc-simple-den-floor (derivative-only denominator floor in UMSC SimpleScattering, 0 disables) - default: 0.0", required_argument, 0, 'R'},
+   {"umsc-disp-rad-floor   (derivative-only floor for UMSC displacement sqrt radicand derivative, 0 disables) - default: 0.0", required_argument, 0, 'S'},
+   {"stop-grad-mode (0:none,1:track,2:track+desc) - default: 2"         , required_argument, 0, 'x'},
++  {"abs-profile          (per-layer absorber thicknesses v0:v1:...:v{N-1} in [mm]; length must equal #layers)", required_argument, 0, 1001},
++  {"gap-profile          (per-layer gap thicknesses v0:v1:...:v{N-1} in [mm]; length must equal #layers)"     , required_argument, 0, 1002},
++  {"abs-layer            (override one layer's absorber thickness: i:value[:dot])"                            , required_argument, 0, 1003},
++  {"gap-layer            (override one layer's gap thickness: i:value[:dot])"                                 , required_argument, 0, 1004},
++  #ifdef CODI_REVERSE
++    {"bar-gap              (reverse-AD bar values of per-layer GAP edeps v0:v1:...:v{N-1}, [MeV]) - default: 0:0:...:0", required_argument, 0, 1005},
++  #endif
+   {"help"                                                                                    , no_argument      , 0, 'h'},
+   {0, 0, 0, 0}
+ };
+@@ -298,6 +314,47 @@ void GetOpt(int argc, char *argv[], InputParameters& param) {
+        param.fGeometry.fSizeTransverse = std::stod(optarg);
+        break;
+ 
++    case 1001: { // --abs-profile v0:v1:...:v{N-1}
++       std::vector<double> p = stod_array(optarg);
++       param.fGeometry.fAbsProfile.assign(p.begin(), p.end());
++       break;
++    }
++    case 1002: { // --gap-profile v0:v1:...:v{N-1}
++       std::vector<double> p = stod_array(optarg);
++       param.fGeometry.fGapProfile.assign(p.begin(), p.end());
++       break;
++    }
++    case 1003: { // --abs-layer i:value[:dot]
++       std::vector<double> p = stod_array(optarg);
++       if (p.size() < 2) { std::cerr << "--abs-layer expects i:value[:dot]" << std::endl; Help(); exit(-1); }
++       param.fGeometry.fAbsLayerIdx = (int)p[0];
++       G4double val = p[1];
++       #ifdef CODI_FORWARD
++          if (p.size() >= 3) SET_DOTVALUE(val, p[2]);
++       #endif
++       param.fGeometry.fAbsLayerVal = val;
++       break;
++    }
++    case 1004: { // --gap-layer i:value[:dot]
++       std::vector<double> p = stod_array(optarg);
++       if (p.size() < 2) { std::cerr << "--gap-layer expects i:value[:dot]" << std::endl; Help(); exit(-1); }
++       param.fGeometry.fGapLayerIdx = (int)p[0];
++       G4double val = p[1];
++       #ifdef CODI_FORWARD
++          if (p.size() >= 3) SET_DOTVALUE(val, p[2]);
++       #endif
++       param.fGeometry.fGapLayerVal = val;
++       break;
++    }
++    case 1005: { // --bar-gap : reverse-AD bar values of per-layer GAP edeps
++       #ifdef CODI_REVERSE
++          param.barEdepGap = stod_array(optarg);
++       #else
++          std::cerr << "Ignoring --bar-gap argument, as this is not a reverse-AD build." << std::endl;
++       #endif
++       break;
++    }
++
+     case 'x': {
+        const int mode = std::stoi(optarg);
+        if (mode < 0 || mode > 2) {
+diff --git a/Simulation/include/Results.hh b/Simulation/include/Results.hh
+index e7369bc..8b0a93e 100644
+--- a/Simulation/include/Results.hh
++++ b/Simulation/include/Results.hh
+@@ -70,13 +70,21 @@ struct Results {
+   Hist fEdepPerLayer;              ///< mean energy deposit per-layer histogram
+   Hist fEdepPerLayer_CurrentEvent;       ///< mean energy deposit per-layer histogram, current event
+   std::vector<Accumulator<double>> fEdepPerLayer_Acc; ///< computes statistical properties of the energy deposit per layer per event
++  // --- Per-layer GAP energy (sampled signal), parallel to the combined per-layer energy above ---
++  Hist fEdepGapPerLayer;                 ///< mean GAP energy deposit per-layer histogram
++  Hist fEdepGapPerLayer_CurrentEvent;    ///< GAP energy deposit per-layer histogram, current event
++  std::vector<Accumulator<double>> fEdepGapPerLayer_Acc; ///< statistical properties of the per-layer GAP energy deposit per event
+   #ifdef CODI_FORWARD
+     std::vector<Accumulator<double>> fEdepPerLayer_AccD; ///< computes statistical properties of the dot value of the energy deposit per layer per event
++    std::vector<Accumulator<double>> fEdepGapPerLayer_AccD; ///< dot-value statistics of the per-layer GAP energy deposit per event
+   #endif
+   #ifdef CODI_REVERSE
+     std::vector<double> barEdep; ///< Bar values of the edeps, to be set in the beginning.
+-    Accumulator<double> barThicknessAbsorber, barThicknessGap, barParticleEnergy; ///< Accumulate the bar values of the thicknesses and energy.
+-    G4double pThicknessAbsorber, pThicknessGap, pParticleEnergy; ///< Copies of the thickness and energy variables used by the simulation, used as AD inputs.
++    std::vector<double> barEdepGap; ///< Bar values of the per-layer GAP edeps, to be set in the beginning.
++    Accumulator<double> barThicknessAbsorber, barThicknessGap, barParticleEnergy; ///< Aggregate (summed-over-layers) bar values of the thicknesses and energy (legacy format).
++    G4double pParticleEnergy; ///< Copy of the energy variable used by the simulation, used as an AD input.
++    std::vector<G4double> pAbsThick, pGapThick; ///< Per-layer absorber/gap thickness AD inputs (registered each event).
++    std::vector<Accumulator<double>> barAbsThick, barGapThick; ///< Per-layer accumulated bar (gradient) values of the absorber/gap thicknesses.
+   #endif
+   Hist fGammaTrackLenghtPerLayer;  ///< mean number of \f$\gamma\f$ steps per-layer histogram
+   Hist fElPosTrackLenghtPerLayer;  ///< mean number of \f$e^-/e^+\f$ steps per-layer histogram
+diff --git a/Simulation/src/EventLoop.cc b/Simulation/src/EventLoop.cc
+index 286433a..8918a54 100644
+--- a/Simulation/src/EventLoop.cc
++++ b/Simulation/src/EventLoop.cc
+@@ -201,12 +201,22 @@ void EventLoop::BeginOfEventAction(Results& theResult, int eventID, const G4HepE
+   #ifdef CODI_REVERSE
+     G4double::getTape().reset();
+     G4double::getTape().setActive();
+-    theResult.pThicknessAbsorber = theGeometry.GetAbsThick();
+-    G4double::getTape().registerInput(theResult.pThicknessAbsorber);
+-    theGeometry.SetAbsThick(theResult.pThicknessAbsorber);
+-    theResult.pThicknessGap = theGeometry.GetGapThick();
+-    G4double::getTape().registerInput(theResult.pThicknessGap);
+-    theGeometry.SetGapThick(theResult.pThicknessGap);
++    // register every per-layer absorber/gap thickness as an independent AD input,
++    // then write the registered copies back into the geometry so the simulation
++    // transports gradients w.r.t. each layer's thickness.
++    const int nLayersR = theGeometry.GetNumLayers();
++    theResult.pAbsThick.resize(nLayersR);
++    theResult.pGapThick.resize(nLayersR);
++    for (int i = 0; i < nLayersR; ++i) {
++      theResult.pAbsThick[i] = theGeometry.GetAbsThickLayer(i);
++      G4double::getTape().registerInput(theResult.pAbsThick[i]);
++    }
++    for (int i = 0; i < nLayersR; ++i) {
++      theResult.pGapThick[i] = theGeometry.GetGapThickLayer(i);
++      G4double::getTape().registerInput(theResult.pGapThick[i]);
++    }
++    theGeometry.SetAbsProfile(theResult.pAbsThick);
++    theGeometry.SetGapProfile(theResult.pGapThick);
+     theResult.pParticleEnergy = thePrimaryGenerator.GetKinEnergy();
+     G4double::getTape().registerInput(theResult.pParticleEnergy);
+     thePrimaryGenerator.SetKinEnergy(theResult.pParticleEnergy);
+@@ -222,8 +232,10 @@ void EventLoop::BeginOfEventAction(Results& theResult, int eventID, const G4HepE
+   theResult.fPerEventRes.fNumStepsGamma  = 0.0;
+   theResult.fPerEventRes.fNumStepsElPos  = 0.0;
+ 
+-  for(int i=0; i<50; i++){
++  const int nbReset = theResult.fEdepPerLayer_CurrentEvent.GetNumBins();
++  for(int i=0; i<nbReset; i++){
+     theResult.fEdepPerLayer_CurrentEvent.GetY()[i] = 0.;
++    theResult.fEdepGapPerLayer_CurrentEvent.GetY()[i] = 0.;
+   }
+ 
+ }
+@@ -235,10 +247,14 @@ void EventLoop::EndOfEventAction(Results& theResult, int eventID) {
+   theResult.fEdepAbs2 += dum*dum;
+ 
+   theResult.fEdepPerLayer.Add(&theResult.fEdepPerLayer_CurrentEvent);
+-  for(int i=0; i<50; i++){
++  theResult.fEdepGapPerLayer.Add(&theResult.fEdepGapPerLayer_CurrentEvent);
++  const int nbAcc = theResult.fEdepPerLayer_CurrentEvent.GetNumBins();
++  for(int i=0; i<nbAcc; i++){
+     theResult.fEdepPerLayer_Acc[i].add(GET_VALUE((theResult.fEdepPerLayer_CurrentEvent.GetY()[i])));
++    theResult.fEdepGapPerLayer_Acc[i].add(GET_VALUE((theResult.fEdepGapPerLayer_CurrentEvent.GetY()[i])));
+     #if CODI_FORWARD
+        theResult.fEdepPerLayer_AccD[i].add(GET_DOTVALUE((theResult.fEdepPerLayer_CurrentEvent.GetY()[i])));
++       theResult.fEdepGapPerLayer_AccD[i].add(GET_DOTVALUE((theResult.fEdepGapPerLayer_CurrentEvent.GetY()[i])));
+     #endif
+   }
+ 
+@@ -246,7 +262,7 @@ void EventLoop::EndOfEventAction(Results& theResult, int eventID) {
+   #if CODI_FORWARD
+   {
+     double maxAbsDot = 0;
+-    for(int i=0; i<50; i++){
++    for(int i=0; i<nbAcc; i++){
+       double d = std::abs(GET_DOTVALUE(theResult.fEdepPerLayer_CurrentEvent.GetY()[i]));
+       if(d > maxAbsDot) maxAbsDot = d;
+     }
+@@ -283,16 +299,38 @@ void EventLoop::EndOfEventAction(Results& theResult, int eventID) {
+   theResult.fNumStepsElPos2 += dum*dum;
+ 
+   #ifdef CODI_REVERSE
+-    for(int i=0; i<50; i++){
++    const int nbOut = theResult.fEdepPerLayer_CurrentEvent.GetNumBins();
++    for(int i=0; i<nbOut; i++){
+        G4double::getTape().registerOutput(theResult.fEdepPerLayer_CurrentEvent.GetY()[i]);
+     }
++    // also register the per-layer GAP energy outputs so their adjoints can be seeded
++    for(int i=0; i<nbOut; i++){
++       G4double::getTape().registerOutput(theResult.fEdepGapPerLayer_CurrentEvent.GetY()[i]);
++    }
+     G4double::getTape().setPassive();
+-    for(int i=0; i<50; i++){
++    for(int i=0; i<nbOut; i++){
+        theResult.fEdepPerLayer_CurrentEvent.GetY()[i].setGradient(theResult.barEdep[i]);
+     }
++    // seed the per-layer GAP energy adjoints (independent of the combined seeds);
++    // gradients of both flow through the same design-parameter inputs below.
++    for(int i=0; i<nbOut; i++){
++       theResult.fEdepGapPerLayer_CurrentEvent.GetY()[i].setGradient(theResult.barEdepGap[i]);
++    }
+     G4double::getTape().evaluate();
+-    theResult.barThicknessAbsorber.add( theResult.pThicknessAbsorber.getGradient() );
+-    theResult.barThicknessGap.add( theResult.pThicknessGap.getGradient() );
++    // accumulate the per-layer thickness gradients, and the legacy aggregates
++    // (sum over layers == derivative w.r.t. the shared uniform thickness).
++    const int nLayersR = (int)theResult.pAbsThick.size();
++    double sumAbs = 0., sumGap = 0.;
++    for(int i=0; i<nLayersR; i++){
++       const double ga = theResult.pAbsThick[i].getGradient();
++       const double gg = theResult.pGapThick[i].getGradient();
++       theResult.barAbsThick[i].add(ga);
++       theResult.barGapThick[i].add(gg);
++       sumAbs += ga;
++       sumGap += gg;
++    }
++    theResult.barThicknessAbsorber.add( sumAbs );
++    theResult.barThicknessGap.add( sumGap );
+     theResult.barParticleEnergy.add( theResult.pParticleEnergy.getGradient() );
+   #endif
+ }
+diff --git a/Simulation/src/Geometry.cc b/Simulation/src/Geometry.cc
+index 265ae83..bc8bf37 100644
+--- a/Simulation/src/Geometry.cc
++++ b/Simulation/src/Geometry.cc
+@@ -176,8 +176,8 @@ void Geometry::ClearDistanceDebugContext() {
+ Geometry::Geometry() {
+   // default values: 50 layers of 2.3 [mm] absorber (PbWO4) and 5.7 [mm] gap (lAr)
+   fNumLayers  =  50;
+-  fAbsThick   = 2.3; // defult value [mm]
+-  fGapThick   = 5.7; // defult value [mm]
++  fAbsThick.assign(fNumLayers, G4double(2.3)); // defult value [mm], per layer
++  fGapThick.assign(fNumLayers, G4double(5.7)); // defult value [mm], per layer
+   fCaloSizeYZ = 400; // defult value [mm]
+ 
+   // these will be computed automatically in the `UpdateParameters`
+@@ -208,10 +208,16 @@ Geometry::~Geometry() {
+ 
+ 
+ void Geometry::UpdateParameters() {
+-  // calculate the layer and calorimeter thicknesses based on the `absorber`,
+-  // `gap` thinkesses and the number of layers
+-  fLayerThick = fAbsThick + fGapThick;
+-  fCaloThick  = fNumLayers*fLayerThick;
++  // calculate the cumulative layer-start positions (prefix sums of the per-layer
++  // thicknesses) and the total calorimeter thickness. These are kept AD-active so
++  // that an upstream layer's thickness shifts all downstream layer positions.
++  const int N = fNumLayers;
++  fLayerStartX.assign(N+1, G4double(0.0));
++  for (int i = 0; i < N; ++i) {
++    const G4double layerThick = fAbsThick[i] + fGapThick[i];
++    fLayerStartX[i+1] = fLayerStartX[i] + layerThick;
++  }
++  fCaloThick = fLayerStartX[N];
+ 
+   // set/calculate the left hand side x point where the calorimeter starts
+   //fCaloStartX = -0.5*fCaloThick;
+@@ -230,22 +236,20 @@ void Geometry::UpdateParameters() {
+   fBoxWorld->SetHalfLength(1.1*halfCaloYZ, 1);
+   fBoxWorld->SetHalfLength(1.1*halfCaloYZ, 2);
+ 
+-  int iMatCalo = 0;
+-  fBoxCalo->SetMaterialIndx(iMatCalo);
++  fBoxCalo->SetMaterialIndx(0);
+   fBoxCalo->SetHalfLength(0.5*fCaloThick, 0);
+   fBoxCalo->SetHalfLength(halfCaloYZ, 1);
+   fBoxCalo->SetHalfLength(halfCaloYZ, 2);
+ 
+-
+-  fBoxLayer->SetHalfLength(0.5*fLayerThick, 0);
++  // NOTE: the per-layer x half-lengths of the `layer`, `absorber` and `gap` boxes
++  // now vary by layer, so they are set at point-of-use in `CalculateDistanceToOut`.
++  // Here we only fix the transverse (yz) extents that are common to all layers.
+   fBoxLayer->SetHalfLength(halfCaloYZ, 1);
+   fBoxLayer->SetHalfLength(halfCaloYZ, 2);
+ 
+-  fBoxAbs->SetHalfLength(0.5*fAbsThick, 0);
+   fBoxAbs->SetHalfLength(halfCaloYZ, 1);
+   fBoxAbs->SetHalfLength(halfCaloYZ, 2);
+ 
+-  fBoxGap->SetHalfLength(0.5*fGapThick, 0);
+   fBoxGap->SetHalfLength(halfCaloYZ, 1);
+   fBoxGap->SetHalfLength(halfCaloYZ, 2);
+ }
+@@ -277,13 +281,34 @@ G4double Geometry::CalculateDistanceToOut(G4double* r, G4double *v, Box** curren
+   }
+ 
+   // calculate the position in the `layer` system:
+-  // - first calculate the index of the `layer` in which the point is located
+-  const int iLayer = int( GET_VALUE(((rx_Calo)/fLayerThick)) );  //FIX +0.5*fCaloThick
++  // - first locate the `layer` by scanning the cumulative boundaries. This is a
++  //   discrete selection done on the VALUES only (via GET_VALUE), so the layer
++  //   index itself carries no AD information (pre-existing stop-gradient semantics).
++  const double rxCaloV = GET_VALUE(rx_Calo);
++  int iLayer = 0;
++  if (rxCaloV >= GET_VALUE(fLayerStartX[fNumLayers])) {
++    iLayer = fNumLayers - 1;
++  } else if (rxCaloV > GET_VALUE(fLayerStartX[0])) {
++    for (int i = 0; i < fNumLayers; ++i) {
++      if (rxCaloV >= GET_VALUE(fLayerStartX[i]) && rxCaloV < GET_VALUE(fLayerStartX[i+1])) {
++        iLayer = i;
++        break;
++      }
++    }
++  }
+   *indxLayer = iLayer;
+-  // - then the corresponding translation vector and transform the point
+-  const G4double trLayeri = (iLayer)*fLayerThick; //FIX -0.5*fCaloThick +  +0.5
+-  const G4double rx_Layer = rx_Calo - trLayeri;
+-  r[0] = rx_Layer - 0.5*fLayerThick; //FIX
++  // - then the corresponding (AD-active) translation vector and transform the point.
++  //   trLayeri = cumulative thickness of all preceding layers; rx_Layer is the
++  //   x-position measured from the start of the current layer.
++  const G4double trLayeri  = fLayerStartX[iLayer];
++  const G4double layerThick = fAbsThick[iLayer] + fGapThick[iLayer];
++  const G4double rx_Layer  = rx_Calo - trLayeri;
++  // - set the current layer's box x half-lengths (AD-active) so the per-layer
++  //   thicknesses propagate gradients through the distance calculations below.
++  fBoxLayer->SetHalfLength(0.5*layerThick, 0);
++  fBoxAbs->SetHalfLength(0.5*fAbsThick[iLayer], 0);
++  fBoxGap->SetHalfLength(0.5*fGapThick[iLayer], 0);
++  r[0] = rx_Layer - 0.5*layerThick; //FIX
+ 
+   // calculate the distance to the `layer` boundary along the given direction
+   // why: tolerance and direction was not considered! So to detect here that
+@@ -298,10 +323,10 @@ G4double Geometry::CalculateDistanceToOut(G4double* r, G4double *v, Box** curren
+   }
+ 
+   // calculate if the point is in the `absorber` or the `gap` part of the `layer`
+-  if (rx_Layer < fAbsThick || fGapThick == 0) { // in the `absorber`
++  if (rx_Layer < fAbsThick[iLayer] || fGapThick[iLayer] == 0) { // in the `absorber`
+     // calculate the position in the `absorber` system:
+     // - the translation vector and transform the point
+-    const G4double trAbs = 0.5 * fAbsThick;  //FIX -0.5*(fLayerThick - fAbsThick)
++    const G4double trAbs = 0.5 * fAbsThick[iLayer];  //FIX -0.5*(fLayerThick - fAbsThick)
+     r[0] = rx_Layer - trAbs;
+     // set what is left and calculate the distance to the `absorber` boundary along
+     // the given direction (again, I could push here and do recursion whenever it's zero)
+@@ -313,7 +338,7 @@ G4double Geometry::CalculateDistanceToOut(G4double* r, G4double *v, Box** curren
+   } else { // in the `gap`
+     // calculate the position in the `gap` system:
+     // - the translation vector and transform the point
+-    const G4double  trGap = fAbsThick + 0.5 * fGapThick; //FIX -0.5*(fLayerThick -fGapThick) + 
++    const G4double  trGap = fAbsThick[iLayer] + 0.5 * fGapThick[iLayer]; //FIX -0.5*(fLayerThick -fGapThick) +
+     r[0] = rx_Layer - trGap;
+     // set what is left and calculate the distance to the `gap` boundary along
+     // the given direction (again, I could push here and do recursion whenever it's zero)
+diff --git a/Simulation/src/Results.cc b/Simulation/src/Results.cc
+index cb7bf6e..d21ef5b 100644
+--- a/Simulation/src/Results.cc
++++ b/Simulation/src/Results.cc
+@@ -13,13 +13,15 @@ void WriteResults(struct Results& res, int numEvents, int seed) {
+   // for the histograms, bring them to be mean per event and write
+   const G4double norm = numEvents > 0 ? 1.0/numEvents : 1.0;
+   res.fEdepPerLayer.Scale(norm);
++  res.fEdepGapPerLayer.Scale(norm);
+   res.fGammaTrackLenghtPerLayer.Scale(norm);
+   res.fElPosTrackLenghtPerLayer.Scale(norm);
+ 
+   res.fEdepPerLayer.WriteToFile(false);
+   std::ofstream edeps("edeps_" + std::to_string(seed));
+   //std::ofstream edeps("edeps");
+-  for(int i=0; i<50; i++){
++  const int nLayers = (int)res.fEdepPerLayer_Acc.size();
++  for(int i=0; i<nLayers; i++){
+      edeps << std::setprecision(14) << res.fEdepPerLayer_Acc[i].getMean() << " " << res.fEdepPerLayer_Acc[i].getMeanSq();
+      #if CODI_FORWARD
+         edeps << " " << res.fEdepPerLayer_AccD[i].getMean() << " " << res.fEdepPerLayer_AccD[i].getMeanSq();
+@@ -28,13 +30,43 @@ void WriteResults(struct Results& res, int numEvents, int seed) {
+   }
+   edeps.close();
+ 
++  // per-layer GAP energy (sampled signal), same column layout as edeps_<seed>:
++  // "mean meanSq [mean_dot meanSq_dot]" per layer. Absorber energy = combined - gap.
++  std::ofstream edepsGap("edeps_gap_" + std::to_string(seed));
++  const int nLayersGap = (int)res.fEdepGapPerLayer_Acc.size();
++  for(int i=0; i<nLayersGap; i++){
++     edepsGap << std::setprecision(14) << res.fEdepGapPerLayer_Acc[i].getMean() << " " << res.fEdepGapPerLayer_Acc[i].getMeanSq();
++     #if CODI_FORWARD
++        edepsGap << " " << res.fEdepGapPerLayer_AccD[i].getMean() << " " << res.fEdepGapPerLayer_AccD[i].getMeanSq();
++     #endif
++     edepsGap << "\n";
++  }
++  edepsGap.close();
++
+   #ifdef CODI_REVERSE
++     // legacy aggregate format (kept for backward compatibility / regression checks):
++     // sum over layers == derivative w.r.t. the shared uniform thickness.
+      std::ofstream barInputs("barInputs");
+      barInputs << std::setprecision(14);
+      barInputs << res.barThicknessAbsorber.getMean() << " " << res.barThicknessAbsorber.getVar() << "\n";
+      barInputs << res.barThicknessGap.getMean() << " " << res.barThicknessGap.getVar() << "\n";
+      barInputs << res.barParticleEnergy.getMean() << " " << res.barParticleEnergy.getVar() << "\n";
+      barInputs.close();
++
++     // per-layer gradients: rows 0..N-1 -> d/d_absThick[i], rows N..2N-1 -> d/d_gapThick[i],
++     // final row -> d/d_energy. Each row is "mean var".
++     const int NL = (int)res.barAbsThick.size();
++     std::ofstream barPL("barInputsPerLayer");
++     barPL << std::setprecision(14);
++     barPL << "# N=" << NL << " ; rows 0..N-1: d/d_absThick[i] (mean var); rows N..2N-1: d/d_gapThick[i]; last row: d/d_energy\n";
++     for(int i=0; i<NL; i++){
++        barPL << res.barAbsThick[i].getMean() << " " << res.barAbsThick[i].getVar() << "\n";
++     }
++     for(int i=0; i<NL; i++){
++        barPL << res.barGapThick[i].getMean() << " " << res.barGapThick[i].getVar() << "\n";
++     }
++     barPL << res.barParticleEnergy.getMean() << " " << res.barParticleEnergy.getVar() << "\n";
++     barPL.close();
+   #endif
+ 
+ 
+diff --git a/Simulation/src/SteppingLoop.cc b/Simulation/src/SteppingLoop.cc
+index cefec52..faa154d 100644
+--- a/Simulation/src/SteppingLoop.cc
++++ b/Simulation/src/SteppingLoop.cc
+@@ -1459,6 +1459,8 @@ void SteppingLoop::SteppingAction(Results& theResult, const G4HepEmTrack& theTra
+       case 0: theResult.fPerEventRes.fEdepAbs += edep;
+               break;
+       case 1: theResult.fPerEventRes.fEdepGap += edep;
++              // per-layer GAP energy: accumulate only deposits in the gap region
++              theResult.fEdepGapPerLayer_CurrentEvent.Fill(indxLayer, edep);
+               break;
+       default: //
+               break;
