@@ -79,6 +79,13 @@ def parse_args(argv=None):
                    help="gap-signal penalty weight lambda (default 1e4)")
     p.add_argument("--mu", type=float, default=1.0,
                    help="length-cost weight mu (default 1.0)")
+    p.add_argument("--trust-region", type=float, default=TRUST_REGION,
+                   help="max single-thickness change per inner iteration [mm] "
+                        f"(default {TRUST_REGION}); raise to take bigger steps "
+                        "with fewer iterations")
+    p.add_argument("--lr", type=float, default=None,
+                   help="base learning rate for the inner GD step (default: "
+                        "optimizer module default; step is trust-region capped)")
     p.add_argument("--out-jsonl", type=str,
                    default=str(_HERE / "e2_discriminate_gapsignal_results.jsonl"),
                    help="JSONL checkpoint file (default "
@@ -127,7 +134,8 @@ def load_completed(out_path: Path):
 
 
 def run_unit(n_layers, K, evis_target_cli, lam, mu,
-             n_events, max_iters, seeds, ctrl):
+             n_events, max_iters, seeds, ctrl,
+             trust_region=TRUST_REGION, lr=None):
     """Optimize one (n_layers, K) unit; return a result-row dict.
 
     If ``evis_target_cli`` is None, the target is set PER UNIT to 1.3x the
@@ -143,10 +151,12 @@ def run_unit(n_layers, K, evis_target_cli, lam, mu,
         evis_target = float(evis_target_cli)
     init_loss = float(gap_signal_loss(init_evis, evis_target, lam, mu, rep.regions))
 
-    res = optimize_inner_gapsignal(
-        rep, evis_target, lam, mu, constraints=CONSTRAINTS,
-        max_iters=max_iters, n_events=n_events, seeds=seeds, ctrl=ctrl,
-        trust_region=TRUST_REGION)
+    opt_kwargs = dict(
+        constraints=CONSTRAINTS, max_iters=max_iters, n_events=n_events,
+        seeds=seeds, ctrl=ctrl, trust_region=trust_region)
+    if lr is not None:
+        opt_kwargs["lr"] = lr
+    res = optimize_inner_gapsignal(rep, evis_target, lam, mu, **opt_kwargs)
 
     final_loss = float(res.final_objective)
     final_evis = float("nan")
@@ -170,6 +180,7 @@ def run_unit(n_layers, K, evis_target_cli, lam, mu,
         "mu": float(mu),
         "n_events": int(n_events),
         "max_iters": int(max_iters),
+        "trust_region": float(trust_region),
         "seeds": list(seeds),
         "converged": bool(res.converged),
         "n_iters": int(len(res.history)),
@@ -302,7 +313,8 @@ def main(argv=None):
 
     for nl, K in to_run:
         row = run_unit(nl, K, args.evis_target, args.lam, args.mu,
-                       args.n_events, args.max_iters, seeds, ctrl)
+                       args.n_events, args.max_iters, seeds, ctrl,
+                       trust_region=args.trust_region, lr=args.lr)
         append_row(out_path, row)
         print(f"[done] nl={nl} K={K} n_regions={row['n_regions']} "
               f"final_loss={row['final_loss']:.6f} "
