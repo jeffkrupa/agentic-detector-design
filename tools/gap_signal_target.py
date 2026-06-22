@@ -116,6 +116,32 @@ def gap_signal_adjoints(
     return np.full(int(n_layers), w_val, dtype=float)
 
 
+def net_signal_adjoints(n_layers: int) -> np.ndarray:
+    """Uniform per-layer GAP adjoint vector for the NET-SIGNAL objective.
+
+    The net-signal objective is ``L = -Evis + mu * sum_r n_r * g_r``; since
+    ``d(-Evis)/d(E_gap,l) = -1`` for every layer, the per-layer GAP adjoints are
+    ``-1`` uniformly. These seed the GAP outputs (``--bar-gap``) so the returned
+    thickness gradient pushes gap thickness UP where sampling is efficient. The
+    explicit length term is handled separately by ``gap_length_region_grad``.
+    """
+    return -1.0 * np.ones(int(n_layers), dtype=float)
+
+
+def net_signal_loss(evis: float, mu: float, regions) -> float:
+    """Scalar NET-SIGNAL loss ``L = -evis + mu * sum_r n_r * g_r``.
+
+    A clean linear trade: each unit of sampled energy is worth 1, each unit of
+    GAP length (summed over layers) costs ``mu``. Layers want max gap where the
+    marginal sampling ``d(Evis)/d(gap_l)`` exceeds ``mu`` and min gap otherwise.
+    """
+    length_term = 0.0
+    for r in regions:
+        n_r = int(r.end) - int(r.start)
+        length_term += n_r * float(r.gap_mm)
+    return float(-float(evis) + float(mu) * length_term)
+
+
 def gap_length_region_grad(regions, mu: float) -> dict:
     """Explicit per-region length-term gradient (GAP thickness only).
 

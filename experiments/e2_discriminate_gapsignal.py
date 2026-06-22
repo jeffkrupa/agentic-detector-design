@@ -36,8 +36,10 @@ import numpy as np
 
 from agent.structural_moves import DesignRepresentation
 from tools import sim as _sim
-from tools.optimizer import optimize_inner_gapsignal
-from tools.gap_signal_target import total_gap_signal, gap_signal_loss
+from tools.optimizer import optimize_inner_gapsignal, optimize_inner_netsignal
+from tools.gap_signal_target import (
+    total_gap_signal, gap_signal_loss, net_signal_loss,
+)
 
 
 # ---- experiment configuration (fixed physics) ---------------------------- #
@@ -75,8 +77,14 @@ def parse_args(argv=None):
                    help="target sampled energy Evis = sum_l E_gap,l [MeV]. If "
                         "unset, set PER UNIT at runtime to 1.3x the uniform-init "
                         "Evis (a reachable stretch that makes the relu active).")
+    p.add_argument("--objective", type=str, default="shortfall",
+                   choices=["shortfall", "netsignal"],
+                   help="inner objective: 'shortfall' (relu min-length, default, "
+                        "preserves current behavior) or 'netsignal' (clean linear "
+                        "trade L=-Evis+mu*sum n_r g_r; --evis-target/--lam ignored)")
     p.add_argument("--lam", type=float, default=1e4,
-                   help="gap-signal penalty weight lambda (default 1e4)")
+                   help="gap-signal penalty weight lambda (default 1e4; "
+                        "ignored in netsignal mode)")
     p.add_argument("--mu", type=float, default=1.0,
                    help="length-cost weight mu (default 1.0)")
     p.add_argument("--trust-region", type=float, default=TRUST_REGION,
@@ -135,28 +143,36 @@ def load_completed(out_path: Path):
 
 def run_unit(n_layers, K, evis_target_cli, lam, mu,
              n_events, max_iters, seeds, ctrl,
-             trust_region=TRUST_REGION, lr=None):
+             trust_region=TRUST_REGION, lr=None, objective="shortfall"):
     """Optimize one (n_layers, K) unit; return a result-row dict.
 
-    If ``evis_target_cli`` is None, the target is set PER UNIT to 1.3x the
-    uniform-init Evis so the relu is active and the stretch is reachable.
+    For the ``shortfall`` objective, if ``evis_target_cli`` is None the target is
+    set PER UNIT to 1.3x the uniform-init Evis so the relu is active and the
+    stretch is reachable. For ``netsignal``, ``evis_target``/``lam`` are ignored
+    and the loss is the clean linear trade ``L = -Evis + mu*sum_r n_r g_r``.
     """
     rep = DesignRepresentation.uniform(
         n_layers, K, ABS0, GAP0, ENERGY, PARTICLE)
 
     init_evis = total_gap_signal(rep.to_design_point(), n_events, seeds, ctrl=ctrl)
-    if evis_target_cli is None:
-        evis_target = 1.3 * float(init_evis)
-    else:
-        evis_target = float(evis_target_cli)
-    init_loss = float(gap_signal_loss(init_evis, evis_target, lam, mu, rep.regions))
 
     opt_kwargs = dict(
         constraints=CONSTRAINTS, max_iters=max_iters, n_events=n_events,
         seeds=seeds, ctrl=ctrl, trust_region=trust_region)
     if lr is not None:
         opt_kwargs["lr"] = lr
-    res = optimize_inner_gapsignal(rep, evis_target, lam, mu, **opt_kwargs)
+
+    if objective == "netsignal":
+        evis_target = float("nan")  # ignored in netsignal mode
+        init_loss = float(net_signal_loss(init_evis, mu, rep.regions))
+        res = optimize_inner_netsignal(rep, mu, **opt_kwargs)
+    else:
+        if evis_target_cli is None:
+            evis_target = 1.3 * float(init_evis)
+        else:
+            evis_target = float(evis_target_cli)
+        init_loss = float(gap_signal_loss(init_evis, evis_target, lam, mu, rep.regions))
+        res = optimize_inner_gapsignal(rep, evis_target, lam, mu, **opt_kwargs)
 
     final_loss = float(res.final_objective)
     final_evis = float("nan")
@@ -168,6 +184,7 @@ def run_unit(n_layers, K, evis_target_cli, lam, mu,
     return {
         "n_layers": int(n_layers),
         "K": int(K),
+        "objective": str(objective),
         "n_regions": int(res.final_rep.n_regions),
         "final_loss": final_loss,
         "final_evis": final_evis,
@@ -314,7 +331,8 @@ def main(argv=None):
     for nl, K in to_run:
         row = run_unit(nl, K, args.evis_target, args.lam, args.mu,
                        args.n_events, args.max_iters, seeds, ctrl,
-                       trust_region=args.trust_region, lr=args.lr)
+                       trust_region=args.trust_region, lr=args.lr,
+                       objective=args.objective)
         append_row(out_path, row)
         print(f"[done] nl={nl} K={K} n_regions={row['n_regions']} "
               f"final_loss={row['final_loss']:.6f} "
