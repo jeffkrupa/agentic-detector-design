@@ -301,12 +301,20 @@ def run_reverse(dp: DesignPoint, adjoints: np.ndarray, n_events: int, seed: int,
 
 def run_reverse_per_layer(dp: DesignPoint, adjoints: np.ndarray, n_events: int,
                           seed: int, ctrl: Optional[CtrlFlags] = None,
-                          use_cache: bool = True) -> np.ndarray:
+                          use_cache: bool = True,
+                          gap_adjoints: Optional[np.ndarray] = None) -> np.ndarray:
     """Reverse-mode run returning the **per-layer** gradient array.
 
     Same invocation as :func:`run_reverse` (``adjoints`` are per-layer output
     bars, len == n_layers) but parses the ``barInputsPerLayer`` file instead of
     the legacy 3-row ``barInputs``.
+
+    ``gap_adjoints`` (optional, len = n_layers) additionally seeds the per-layer
+    **GAP** energy outputs via ``--bar-gap`` (mirrors :func:`run_reverse`). The
+    returned per-layer ``barInputsPerLayer`` then reflects d/d(design) of
+    ``sum_l(adjoints[l]*E_l + gap_adjoints[l]*E_gap,l)``. Pass ``adjoints``
+    all-zero with ``gap_adjoints`` set to differentiate a pure gap-signal
+    objective. When ``gap_adjoints`` is None the command line is unchanged.
 
     Returns the ``(2N+1, 2)`` array with columns ``[mean, var]``:
       * rows ``0 .. N-1``   : d(objective)/d(abs_thick[i])
@@ -325,6 +333,11 @@ def run_reverse_per_layer(dp: DesignPoint, adjoints: np.ndarray, n_events: int,
         raise ValueError(f"adjoints length {adj.size} != n_layers {dp.n_layers}")
     args = _common_args(dp, ctrl, n_events, seed, cfg, seeded_param=None)
     args += ["-b", ":".join(repr(float(x)) for x in adj)]
+    if gap_adjoints is not None:
+        gadj = np.asarray(gap_adjoints, dtype=float).ravel()
+        if gadj.size != dp.n_layers:
+            raise ValueError(f"gap_adjoints length {gadj.size} != n_layers {dp.n_layers}")
+        args += ["--bar-gap", ":".join(repr(float(x)) for x in gadj)]
     # Distinct cache namespace so per-layer results never collide with the
     # legacy 3-row run that shares the identical command line.
     key = _flag_hash(binary, ["__perlayer__", *args])
@@ -422,7 +435,8 @@ def reverse_gradient_multiseed(dp: DesignPoint, adjoints: np.ndarray, n_events: 
 
 def reverse_per_layer_gradients_multiseed(dp: DesignPoint, adjoints: np.ndarray,
                                           n_events: int, seeds,
-                                          ctrl: Optional[CtrlFlags] = None):
+                                          ctrl: Optional[CtrlFlags] = None,
+                                          gap_adjoints: Optional[np.ndarray] = None):
     """Average the per-layer reverse gradient over seeds.
 
     Analogous to :func:`reverse_gradient_multiseed` but for the per-layer
@@ -440,7 +454,8 @@ def reverse_per_layer_gradients_multiseed(dp: DesignPoint, adjoints: np.ndarray,
           "n_layers":        int,
         }
     """
-    runs = [run_reverse_per_layer(dp, adjoints, n_events, s, ctrl=ctrl) for s in seeds]
+    runs = [run_reverse_per_layer(dp, adjoints, n_events, s, ctrl=ctrl,
+                                  gap_adjoints=gap_adjoints) for s in seeds]
     ok = [r for r in runs if r is not None and not bool(np.isnan(r).any())]
     if not ok:
         return None
