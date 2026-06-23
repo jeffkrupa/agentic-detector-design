@@ -1034,13 +1034,16 @@ def optimize_inner_gapsignal(
             raw_abs[ridx] = (-lr * ga) if take_a else 0.0
             raw_gap[ridx] = (-lr * gg) if take_g else 0.0
 
-        # ----- trust-region normalization (inf-norm cap) ------------------- #
+        # ----- trust-region clip (per-coordinate) -------------------------- #
+        # Clip each region's absorber and gap step independently to
+        # [-trust_region, +trust_region]. A large raw step in one coordinate
+        # no longer shrinks every other coordinate's step (the old global
+        # inf-norm scale collapsed all gap steps toward zero as the region
+        # count grew).
         max_mag = max(float(np.max(np.abs(raw_abs))) if raw_abs.size else 0.0,
                       float(np.max(np.abs(raw_gap))) if raw_gap.size else 0.0)
-        if max_mag > trust_region and max_mag > 0:
-            scale = trust_region / max_mag
-            raw_abs = raw_abs * scale
-            raw_gap = raw_gap * scale
+        raw_abs = np.clip(raw_abs, -trust_region, trust_region)
+        raw_gap = np.clip(raw_gap, -trust_region, trust_region)
 
         # No reliable improving direction -> stop.
         if max_mag == 0.0:
@@ -1260,13 +1263,16 @@ def optimize_inner_netsignal(
             raw_abs[ridx] = (-lr * ga) if take_a else 0.0
             raw_gap[ridx] = (-lr * gg) if take_g else 0.0
 
-        # ----- trust-region normalization (inf-norm cap) ------------------- #
+        # ----- trust-region clip (per-coordinate) -------------------------- #
+        # Clip each region's absorber and gap step independently to
+        # [-trust_region, +trust_region]. A large raw step in one coordinate
+        # no longer shrinks every other coordinate's step (the old global
+        # inf-norm scale collapsed all gap steps toward zero as the region
+        # count grew).
         max_mag = max(float(np.max(np.abs(raw_abs))) if raw_abs.size else 0.0,
                       float(np.max(np.abs(raw_gap))) if raw_gap.size else 0.0)
-        if max_mag > trust_region and max_mag > 0:
-            scale = trust_region / max_mag
-            raw_abs = raw_abs * scale
-            raw_gap = raw_gap * scale
+        raw_abs = np.clip(raw_abs, -trust_region, trust_region)
+        raw_gap = np.clip(raw_gap, -trust_region, trust_region)
 
         # No reliable improving direction -> stop.
         if max_mag == 0.0:
