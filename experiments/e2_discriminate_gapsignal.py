@@ -46,8 +46,13 @@ from tools.gap_signal_target import (
 ENERGY = 10000.0          # 10 GeV e-
 PARTICLE = "e-"
 ABS0, GAP0 = 2.3, 5.7     # uniform starting thicknesses
-CONSTRAINTS = ["1.0 <= a <= 3.5", "3.0 <= g <= 9.0"]
+GAP_MAX = 9.0             # default gap upper bound [mm] (relax via --gap-max)
 TRUST_REGION = 0.05
+
+
+def build_constraints(gap_max=GAP_MAX):
+    """Box constraints for the inner optimizer; gap upper bound is configurable."""
+    return ["1.0 <= a <= 3.5", f"3.0 <= g <= {gap_max}"]
 
 _HERE = Path(__file__).resolve().parent
 _SUMMARY_JSON = _HERE / "e2_discriminate_gapsignal_summary.json"
@@ -87,6 +92,9 @@ def parse_args(argv=None):
                         "ignored in netsignal mode)")
     p.add_argument("--mu", type=float, default=1.0,
                    help="length-cost weight mu (default 1.0)")
+    p.add_argument("--gap-max", type=float, default=GAP_MAX,
+                   help=f"gap thickness upper bound [mm] (default {GAP_MAX}); "
+                        "relax to allow thicker gaps (e.g. 15)")
     p.add_argument("--trust-region", type=float, default=TRUST_REGION,
                    help="max single-thickness change per inner iteration [mm] "
                         f"(default {TRUST_REGION}); raise to take bigger steps "
@@ -143,7 +151,8 @@ def load_completed(out_path: Path):
 
 def run_unit(n_layers, K, evis_target_cli, lam, mu,
              n_events, max_iters, seeds, ctrl,
-             trust_region=TRUST_REGION, lr=None, objective="shortfall"):
+             trust_region=TRUST_REGION, lr=None, objective="shortfall",
+             gap_max=GAP_MAX):
     """Optimize one (n_layers, K) unit; return a result-row dict.
 
     For the ``shortfall`` objective, if ``evis_target_cli`` is None the target is
@@ -157,8 +166,8 @@ def run_unit(n_layers, K, evis_target_cli, lam, mu,
     init_evis = total_gap_signal(rep.to_design_point(), n_events, seeds, ctrl=ctrl)
 
     opt_kwargs = dict(
-        constraints=CONSTRAINTS, max_iters=max_iters, n_events=n_events,
-        seeds=seeds, ctrl=ctrl, trust_region=trust_region)
+        constraints=build_constraints(gap_max), max_iters=max_iters,
+        n_events=n_events, seeds=seeds, ctrl=ctrl, trust_region=trust_region)
     if lr is not None:
         opt_kwargs["lr"] = lr
 
@@ -332,7 +341,7 @@ def main(argv=None):
         row = run_unit(nl, K, args.evis_target, args.lam, args.mu,
                        args.n_events, args.max_iters, seeds, ctrl,
                        trust_region=args.trust_region, lr=args.lr,
-                       objective=args.objective)
+                       objective=args.objective, gap_max=args.gap_max)
         append_row(out_path, row)
         print(f"[done] nl={nl} K={K} n_regions={row['n_regions']} "
               f"final_loss={row['final_loss']:.6f} "
