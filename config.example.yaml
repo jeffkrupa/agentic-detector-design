@@ -28,6 +28,12 @@ defaults:
   particle: "e-"
   energy_mev: 10000.0
 
+# Simulation-runner knobs.
+sim:
+  subprocess_timeout_s: 300   # hard wall-clock cap per binary invocation; a
+                              # stalled/degenerate run is killed and reported as
+                              # a failed (low-reliability) run. null/<=0 disables.
+
 # Statistics knobs.
 stats:
   dev_events: 1000      # events per run during development/self-test

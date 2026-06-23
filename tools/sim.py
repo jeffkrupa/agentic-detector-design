@@ -354,13 +354,42 @@ def run_reverse_per_layer(dp: DesignPoint, adjoints: np.ndarray, n_events: int,
     return arr
 
 
+def _subprocess_timeout_s(cfg: Optional[dict] = None) -> Optional[float]:
+    """Per-invocation wall-clock cap for the sim binary (seconds).
+
+    Read from ``sim.subprocess_timeout_s`` in config (default 300s). A finite
+    cap turns a stalled/degenerate sim into a low-reliability FAILED run instead
+    of an unbounded hang. Set to null/<=0 to disable (legacy behaviour)."""
+    try:
+        cfg = cfg or load_config()
+    except Exception:  # pragma: no cover - config always present in practice
+        return 300.0
+    val = cfg.get("sim", {}).get("subprocess_timeout_s", 300.0)
+    if val is None:
+        return None
+    val = float(val)
+    return val if val > 0 else None
+
+
 def _execute(binary: str, args: list, expect: str, seed: int):
     """Run the binary in an isolated temp dir and parse the expected output."""
     if not Path(binary).exists():
         raise FileNotFoundError(f"binary not found: {binary} (check config.yaml paths)")
+    timeout_s = _subprocess_timeout_s()
     with tempfile.TemporaryDirectory(prefix="hepemshow_agentic_") as wd:
-        proc = subprocess.run([binary, *args], cwd=wd,
-                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        try:
+            proc = subprocess.run([binary, *args], cwd=wd,
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                                  timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            # A stalled / degenerate-geometry run: subprocess.run already killed
+            # (SIGKILL) the child on timeout. Surface this as the SAME failure
+            # shape a bad run uses (None value, nonzero rc, nan=True) so callers
+            # treat it as a low-reliability / failed run instead of hanging.
+            sys.stderr.write(
+                f"[sim] subprocess timed out after {timeout_s}s; "
+                f"treating as failed run: {binary}\n")
+            return None, -1, True
         rc = proc.returncode
         if expect == "edeps":
             out = Path(wd) / f"edeps_{seed}"
