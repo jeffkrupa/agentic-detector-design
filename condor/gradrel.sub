@@ -1,0 +1,41 @@
+# HTCondor submit file for the GRADIENT-RELIABILITY measurement.
+#
+# The experiment writes its --out-jsonl DIRECTLY to the EOS experiments/ dir
+# (EOS is mounted on CERN batch nodes). EOS writes need a kerberos credential,
+# so we forward it with MY.SendCredential = true. The condor `log` file lives
+# on AFS (EOS-hosted logs are unreliable for condor); output/error also on AFS.
+#
+# Per-run knobs (arguments + tag) are set with `condor_submit -append` so one
+# file drives the tiny smoke test and the real per-seed high-stats runs.
+
+# NOTE (CERN gotcha): standard batch schedds REJECT any /eos path in the submit
+# file (executable, log, transfer lists). The executable therefore lives on AFS;
+# it cd's into the EOS repo and writes results to EOS at *runtime* on the worker
+# (the EOS fuse mount is available there), which the schedd never sees.
+universe   = vanilla
+executable = /afs/cern.ch/user/j/jekrupa/condor_bin/run_gradrel.sh
+
+# Pass the experiment CLI through. RUN_ARGS is supplied at submit time via
+#   condor_submit -append 'arguments = ...'
+arguments  = $(RUN_ARGS)
+
+# Forward the kerberos credential so the worker can write to EOS.
+MY.SendCredential = true
+
+# Logs: condor log MUST be on AFS; stdout/stderr also on AFS (always readable).
+log    = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).log
+output = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).out
+error  = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).err
+
+# We write outputs directly to EOS, so no condor file transfer is needed.
+should_transfer_files = NO
+
+# Resources: single-threaded job.
+request_cpus   = 1
+request_memory = 2GB
+request_disk   = 2GB
+
+# "tomorrow" = 1 day max walltime, comfortably exceeds the runtime.
++JobFlavour = "tomorrow"
+
+queue
