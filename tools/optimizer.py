@@ -70,7 +70,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Sequence
 import numpy as np
 
-from .schemas import DesignPoint, CtrlFlags
+from .schemas import DesignPoint, CtrlFlags, Region
 from . import sim as _sim
 from . import observables as _obs
 from . import constraints as _con
@@ -1335,6 +1335,184 @@ def optimize_inner_netsignal(
         seeds=seeds,
         converged=bool(converged),
         predicted_vs_realized=pred_vs_real,
+    )
+
+
+def optimize_inner_netsignal_lbfgs(
+    rep: DesignRepresentation,
+    mu: float,
+    constraints=None,
+    max_iters: int = 40,
+    n_events: int = 300,
+    seed: int = 1,
+    ctrl: Optional[CtrlFlags] = None,
+) -> InnerResult:
+    """Robust bounded inner optimizer for the NET-SIGNAL objective (L-BFGS-B).
+
+    Same loss as :func:`optimize_inner_netsignal`::
+
+        L = -Evis + mu * sum_r n_r * g_r
+
+    but instead of the bespoke trust-region GD this hands the problem to
+    ``scipy.optimize.minimize(method="L-BFGS-B", jac=True)`` -- a standard,
+    robust bound-constrained quasi-Newton optimizer that uses our EXACT reverse-AD
+    gradients and never gets stuck at a bad cap/floor vertex (the GD failure mode
+    where K=40 returned a loss WORSE than K=1, i.e. ratio > 1).
+
+    Variable layout
+    ---------------
+    The optimization vector ``x`` has 2 entries PER REGION, interleaved::
+
+        x = [abs_0, gap_0, abs_1, gap_1, ..., abs_{R-1}, gap_{R-1}]
+
+    so ``x[2*r]`` is region ``r``'s absorber thickness and ``x[2*r+1]`` its gap
+    thickness. ``x`` is initialized from ``rep``'s current region thicknesses.
+
+    Bounds
+    ------
+    Per variable, ``(abs_lo, abs_hi)`` for the absorber entries and
+    ``(gap_lo, gap_hi)`` for the gap entries, taken from the parsed-constraints
+    box (``_param_box``). A ``None`` side is passed through to scipy as an open
+    bound.
+
+    Objective (``jac=True``)
+    ------------------------
+    Each evaluation does exactly ONE forward + ONE reverse sim at the FIXED
+    ``seed`` (deterministic objective -- required for L-BFGS-B's line search):
+      1. unpack ``x`` into the regions -> ``DesignRepresentation`` -> ``DesignPoint``;
+      2. ``evis = total_gap_signal(dp, n_events, [seed], ctrl)``;
+         ``loss = net_signal_loss(evis, mu, regions)``;
+      3. reverse pass ``per_layer = run_reverse_per_layer(dp, adjoints=0,
+         seed, ctrl, gap_adjoints=net_signal_adjoints(N))``;
+         ``rg = region_gradients(...)``; add ``gap_length_region_grad(regions, mu)``;
+         assemble the gradient in the SAME ``[abs, gap, ...]`` layout.
+    If a sim returns NaN/None (e.g. timeout) the objective returns a large finite
+    loss with a zero gradient so the optimizer backs off rather than crashing.
+
+    Returns an :class:`InnerResult` compatible with the GD variant:
+    ``final_rep`` rebuilt from the optimized ``x``, ``final_objective`` the final
+    loss, ``history`` a per-evaluation list of ``{iter, loss, evis}`` (via a
+    scipy callback, with a guaranteed final entry), ``converged`` =
+    ``result.success``.
+    """
+    from scipy.optimize import minimize
+    from .gap_signal_target import (
+        net_signal_loss, net_signal_adjoints, gap_length_region_grad,
+        total_gap_signal,
+    )
+
+    seed = int(seed)
+    n_regions = rep.n_regions
+    N = rep.n_layers
+    box = _param_box(constraints)
+    abs_bound = box.get("a")   # (lo, hi) or None
+    gap_bound = box.get("g")
+
+    # ----- variable layout: [abs_0, gap_0, abs_1, gap_1, ...] -------------- #
+    x0 = np.empty(2 * n_regions, dtype=float)
+    for ridx, r in enumerate(rep.regions):
+        x0[2 * ridx] = float(r.absorber_mm)
+        x0[2 * ridx + 1] = float(r.gap_mm)
+
+    def _bound(b):
+        if b is None:
+            return (None, None)
+        return (b[0], b[1])
+
+    bounds = []
+    for _ridx in range(n_regions):
+        bounds.append(_bound(abs_bound))
+        bounds.append(_bound(gap_bound))
+
+    # geometry context for rebuilding reps from x (regions are immutable)
+    starts = [int(r.start) for r in rep.regions]
+    ends = [int(r.end) for r in rep.regions]
+
+    def _rep_from_x(x):
+        regions = tuple(
+            Region(start=starts[ridx], end=ends[ridx],
+                   absorber_mm=float(x[2 * ridx]),
+                   gap_mm=float(x[2 * ridx + 1]))
+            for ridx in range(n_regions)
+        )
+        return DesignRepresentation(
+            regions=regions, n_layers=N, energy=rep.energy,
+            particle=rep.particle)
+
+    zero_adj = np.zeros(N, dtype=float)
+    gap_adj = net_signal_adjoints(N)
+    _BIG = 1e30
+
+    # carry the latest measured evis out of the objective for history logging
+    last = {"evis": float("nan")}
+
+    def f(x):
+        cur = _rep_from_x(x)
+        dp = cur.to_design_point()
+        evis = total_gap_signal(dp, n_events, [seed], ctrl=ctrl)
+        if evis is None or np.isnan(evis):
+            last["evis"] = float("nan")
+            return float(_BIG), np.zeros(2 * n_regions, dtype=float)
+        loss = net_signal_loss(evis, mu, cur.regions)
+        last["evis"] = float(evis)
+
+        per_layer = _sim.run_reverse_per_layer(
+            dp, adjoints=zero_adj, n_events=n_events, seed=seed, ctrl=ctrl,
+            gap_adjoints=gap_adj)
+        if per_layer is None or bool(np.isnan(per_layer).any()):
+            return float(_BIG), np.zeros(2 * n_regions, dtype=float)
+        rg = _sim.region_gradients(cur.regions, per_layer, N)
+        lgrad = gap_length_region_grad(cur.regions, mu)
+
+        grad = np.empty(2 * n_regions, dtype=float)
+        for ridx in range(n_regions):
+            grad[2 * ridx] = rg[ridx]["absorber"] + lgrad[ridx]["absorber"]
+            grad[2 * ridx + 1] = rg[ridx]["gap"] + lgrad[ridx]["gap"]
+        return float(loss), np.asarray(grad, dtype=float)
+
+    history: list = []
+
+    def _callback(xk):
+        cur = _rep_from_x(xk)
+        evis = last["evis"]
+        loss = net_signal_loss(evis, mu, cur.regions) if not np.isnan(evis) \
+            else float("nan")
+        history.append({
+            "iter": len(history),
+            "loss": float(loss),
+            "evis": float(evis),
+        })
+
+    result = minimize(
+        f, x0, method="L-BFGS-B", jac=True, bounds=bounds,
+        callback=_callback, options={"maxiter": int(max_iters)},
+    )
+
+    final_rep = _rep_from_x(result.x)
+    # Measure the final objective at the returned point deterministically so the
+    # reported loss/evis are exactly those of final_rep.
+    dp = final_rep.to_design_point()
+    final_evis = total_gap_signal(dp, n_events, [seed], ctrl=ctrl)
+    if final_evis is None or np.isnan(final_evis):
+        final_loss = float(result.fun)
+        final_evis = float("nan")
+    else:
+        final_loss = net_signal_loss(final_evis, mu, final_rep.regions)
+    history.append({
+        "iter": len(history),
+        "loss": float(final_loss),
+        "evis": float(final_evis),
+    })
+
+    return InnerResult(
+        final_rep=final_rep,
+        history=history,
+        final_objective=float(final_loss),
+        final_residual=float(final_loss),
+        n_events=int(n_events),
+        seeds=(seed,),
+        converged=bool(result.success),
+        predicted_vs_realized=[],
     )
 
 

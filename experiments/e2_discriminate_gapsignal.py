@@ -36,7 +36,10 @@ import numpy as np
 
 from agent.structural_moves import DesignRepresentation
 from tools import sim as _sim
-from tools.optimizer import optimize_inner_gapsignal, optimize_inner_netsignal
+from tools.optimizer import (
+    optimize_inner_gapsignal, optimize_inner_netsignal,
+    optimize_inner_netsignal_lbfgs,
+)
 from tools.gap_signal_target import (
     total_gap_signal, gap_signal_loss, net_signal_loss,
 )
@@ -102,6 +105,11 @@ def parse_args(argv=None):
     p.add_argument("--lr", type=float, default=None,
                    help="base learning rate for the inner GD step (default: "
                         "optimizer module default; step is trust-region capped)")
+    p.add_argument("--optimizer", type=str, default="gd",
+                   choices=["gd", "lbfgs"],
+                   help="inner optimizer: 'gd' (default, bespoke trust-region "
+                        "GD, preserves current behavior) or 'lbfgs' (robust "
+                        "bounded scipy L-BFGS-B; only with --objective netsignal)")
     p.add_argument("--out-jsonl", type=str,
                    default=str(_HERE / "e2_discriminate_gapsignal_results.jsonl"),
                    help="JSONL checkpoint file (default "
@@ -152,7 +160,7 @@ def load_completed(out_path: Path):
 def run_unit(n_layers, K, evis_target_cli, lam, mu,
              n_events, max_iters, seeds, ctrl,
              trust_region=TRUST_REGION, lr=None, objective="shortfall",
-             gap_max=GAP_MAX):
+             gap_max=GAP_MAX, optimizer="gd"):
     """Optimize one (n_layers, K) unit; return a result-row dict.
 
     For the ``shortfall`` objective, if ``evis_target_cli`` is None the target is
@@ -174,7 +182,13 @@ def run_unit(n_layers, K, evis_target_cli, lam, mu,
     if objective == "netsignal":
         evis_target = float("nan")  # ignored in netsignal mode
         init_loss = float(net_signal_loss(init_evis, mu, rep.regions))
-        res = optimize_inner_netsignal(rep, mu, **opt_kwargs)
+        if optimizer == "lbfgs":
+            res = optimize_inner_netsignal_lbfgs(
+                rep, mu, constraints=build_constraints(gap_max),
+                max_iters=max_iters, n_events=n_events, seed=seeds[0],
+                ctrl=ctrl)
+        else:
+            res = optimize_inner_netsignal(rep, mu, **opt_kwargs)
     else:
         if evis_target_cli is None:
             evis_target = 1.3 * float(init_evis)
@@ -341,7 +355,8 @@ def main(argv=None):
         row = run_unit(nl, K, args.evis_target, args.lam, args.mu,
                        args.n_events, args.max_iters, seeds, ctrl,
                        trust_region=args.trust_region, lr=args.lr,
-                       objective=args.objective, gap_max=args.gap_max)
+                       objective=args.objective, gap_max=args.gap_max,
+                       optimizer=args.optimizer)
         append_row(out_path, row)
         print(f"[done] nl={nl} K={K} n_regions={row['n_regions']} "
               f"final_loss={row['final_loss']:.6f} "

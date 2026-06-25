@@ -1,6 +1,7 @@
 # Core (required by the tool layer; must run on a bare cluster node)
 numpy>=1.21
 pyyaml>=6.0
+scipy>=1.10   # robust bounded inner optimizer (L-BFGS-B; tools.optimizer)
 
 # Optional: real LLM backends (only needed when llm.model != "dry-run")
 # anthropic>=0.40
