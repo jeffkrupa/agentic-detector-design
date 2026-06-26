@@ -186,18 +186,15 @@ test of the "peaked shower ⇒ structure should help *something*" intuition.**
   Designs `uniform` / `fine_at_max` / `coarse_at_max` at **fixed total length AND total gap**
   (so only *granularity* varies). Condor-wired (`condor/depthres.sub`, `run_depthres.sh`).
   Self-test PASSES.
-- **THE ONE REMAINING GATE — a one-line C++ change (approved, NOT yet done):**
-  Per-event longitudinal profiles already exist internally (`fEdepPerLayer_CurrentEvent`,
-  flushed to `boundary_stats.csv`) but are behind a *hardcoded* `bool outputboundarylayers =
-  false;` at **`hepemshow/Simulation/src/SteppingLoop.cc:46`** with no toggle. The fix: make
-  it read the env var that `experiments/depth_resolution.py` sets (check the exact name in
-  that file — it mirrors the adjacent `HEPEMSHOW_OUTPUT_ALL` / `outputall` at line 45),
-  default-OFF, then **rebuild the forward binary** (`cmake --build hepemshow/build -j4`).
-  This is low-risk (default-off, reuses an already-written per-event code path, no `Results`
-  change). *A subagent was mid-way through this when interrupted by a rate limit; verify
-  whether the change/rebuild happened (`git -C hepemshow log`, grep `SteppingLoop.cc:46`,
-  check `build/HepEmShow` mtime) before redoing it.*
-- **Then run it** (value-only, gradient-free — robust to the AD bias):
+- **GATE IS DONE — the test is LAUNCH-READY (verified end-to-end).** The per-event dump is
+  now env-gated: `hepemshow/Simulation/src/SteppingLoop.cc:46` reads `HEPEMSHOW_OUTPUT_ALL`
+  (default-off; committed on `phaseA-perlayer-gap-energy` as `9ceda1e`), the **forward binary
+  is rebuilt** with it, `experiments/depth_resolution.py` sets that env var in the sim
+  subprocess (committed `47bd6b4`), and `run_depthres.sh` is deployed to AFS. A local smoke
+  produces real numbers (uniform σ(x_max) ≈ 24.8 mm vs fine_at_max ≈ 29.0 mm at 20 layers /
+  500 ev — **NOT decisive**, just proof it runs; the 40-layer/10000-event matrix is the test).
+  Nothing is blocked — just launch.
+- **Run it** (value-only, gradient-free — robust to the AD bias):
   ```bash
   cd /afs/cern.ch/user/j/jekrupa/condor_bin
   for d in uniform fine_at_max coarse_at_max; do for s in 1 2 3 4 5 6; do
