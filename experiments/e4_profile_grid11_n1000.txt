@@ -1,0 +1,16 @@
+# E4 normalized-profile matching  N=50 a0=2.3 A_tot=115.0mm gap=5.7(uniform) E=10000.0 N_ev=1000 seeds=[1, 2, 3, 4, 5, 6]
+# candidates: 1 uniform, 33 two-region, 25 three-region (splits k=[16, 25, 33], two-grid=11, three-grid=5^2)
+
+# ---- DIAGNOSTICS ----
+# 1. total forward runs: 354 (59 profiles x 6 seeds)
+# 2. timeouts/NaNs: 0
+# 3. budget-conservation violations: 0 (asserted per profile)
+# 4. reference p0: sum=1.000000 argmax_layer=20 peak=0.0362 min=6.94e-04
+# 5/6. target 'earlier': sum=1.000000 nonneg=True argmax=18 peak=0.0363
+# 5/6. target 'later': sum=1.000000 nonneg=True argmax=22 peak=0.0367
+# 5/6. target 'broader': sum=1.000000 nonneg=True argmax=20 peak=0.0359
+
+target | uniform loss | two-region best loss | three-region best loss | best params | empirical SE | verdict
+earlier  | 5.351e-04 | 2.100e-04 | 3.231e-04 | a_front=2.668,a_rear=2.127 | 2.06e-06 | REACHED (two:>3SE,three:>3SE)
+later    | 4.648e-04 | 9.147e-05 | 2.303e-04 | a_front=1.932,a_rear=2.473 | 2.74e-06 | REACHED (two:>3SE,three:>3SE)
+broader  | 1.058e-05 | 1.222e-05 | 1.007e-05 | - | 6.71e-07 | within 3xSE of uniform

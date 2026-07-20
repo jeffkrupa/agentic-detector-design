@@ -1,0 +1,1 @@
+{"design": "uniform", "seed": 6, "n_layers": 40, "n_events": 10000, "sigma_xmax_mm": 32.649791570303904, "mean_xmax_mm": 135.84663859810917, "depth_res": 32.649791570303904, "shower_max_layer": 14, "total_gap": 228.0, "total_length": 368.0, "n_used_events": 10000}

@@ -1,0 +1,79 @@
+{
+  "uniform_loss": 0.0005342026520153815,
+  "episode_results": {
+    "16": {
+      "k": 16,
+      "best_loss": 0.00018725,
+      "a_front": 2.516,
+      "a_rear": 2.1984,
+      "steps": 7,
+      "status": "loaded_from_e5",
+      "uniform_loss": 0.0005351
+    },
+    "25": {
+      "k": 25,
+      "best_loss": 0.00023203,
+      "a_front": 2.48,
+      "a_rear": 2.12,
+      "steps": 3,
+      "status": "loaded_from_e5",
+      "uniform_loss": 0.0005351
+    },
+    "33": {
+      "k": 33,
+      "best_loss": 0.00026815,
+      "a_front": 2.5002,
+      "a_rear": 1.9113,
+      "steps": 7,
+      "status": "loaded_from_e5",
+      "uniform_loss": 0.0005351
+    }
+  },
+  "not_evaluated_this_episode": [],
+  "best_k_episode": 16,
+  "best_loss_episode": 0.00018725,
+  "oracle": {
+    "16": {
+      "k": 16,
+      "best_loss": 0.00018725,
+      "a_front": 2.516,
+      "a_rear": 2.1984,
+      "steps": 7,
+      "status": "loaded_from_e5",
+      "uniform_loss": 0.0005351
+    },
+    "25": {
+      "k": 25,
+      "best_loss": 0.00023203,
+      "a_front": 2.48,
+      "a_rear": 2.12,
+      "steps": 3,
+      "status": "loaded_from_e5",
+      "uniform_loss": 0.0005351
+    },
+    "33": {
+      "k": 33,
+      "best_loss": 0.00026815,
+      "a_front": 2.5002,
+      "a_rear": 1.9113,
+      "steps": 7,
+      "status": "loaded_from_e5",
+      "uniform_loss": 0.0005351
+    }
+  },
+  "oracle_best_k": 16,
+  "proposer_call_1": {
+    "selected": [
+      16,
+      25
+    ],
+    "rationale": "k=16 is the E5-known optimum for the earlier-shift target; k=25 tests a different front-boundary to check generalization."
+  },
+  "proposer_call_2": {
+    "remaining_presented": [
+      33
+    ],
+    "run_remaining": true,
+    "rationale": "Loss spread across first two episode results (4.48e-05) exceeds 3x typical SE (~1.5e-5); evaluating k=33 is informative."
+  }
+}

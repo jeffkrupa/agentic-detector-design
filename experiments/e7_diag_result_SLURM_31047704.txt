@@ -1,0 +1,38 @@
+# E7 DIAGNOSTIC (bounded)  N=50 a0=2.3 A_tot=115.0 gap=5.7 k=16 N_ev=1000 energies=[1, 3, 10, 30]G
+# train=[1, 2, 3, 4] test=[5, 6, 7, 8] frozen-from-uniform ridge
+# estimator |w|=12.52 b=+4.354
+
+# (1) SURROGATE CURVE (train seeds)
+a_front | surrogate_L | L_SE | AD_grad | grad_SE
+2.000   | 1.1748e-04 | 1.5e-06 | -2.655e-02 | 1.9e-02
+2.300   | 1.3392e-04 | 1.2e-05 | +1.135e-02 | 5.9e-03
+2.516   | 9.8684e-05 | 1.2e-05 | -8.195e-04 | 4.4e-03
+2.600   | 1.2522e-04 | 1.4e-05 | +2.344e-03 | 4.2e-03
+
+# (2) SHORT AD DESCENTS (<=5 steps)
+  descent from a_front=2.0:
+    step 0: a_front=2.0000 L=1.1748e-04(SE1.5e-06) grad=-2.655e-02 -> da=+0.0800 (toward uniform) NaN2
+    step 1: a_front=2.0800 L=9.1519e-05(SE1.5e-05) grad=-2.139e-03 -> da=+0.0064 (toward uniform)
+    early-stop |da|<0.01mm
+  descent from a_front=2.6:
+    step 0: a_front=2.6000 L=1.2522e-04(SE1.4e-05) grad=+2.344e-03 -> da=-0.0800 (toward uniform)
+    step 1: a_front=2.5200 L=1.1037e-04(SE3.4e-06) grad=+4.124e-03 -> da=-0.1000 (toward uniform)
+    step 2: a_front=2.4200 L=9.0149e-05(SE5.1e-06) grad=+5.697e-03 -> da=-0.1000 (toward uniform)
+    step 3: a_front=2.3200 L=8.7429e-05(SE9.4e-06) grad=+4.073e-03 -> da=-0.1000 (toward uniform)
+    step 4: a_front=2.2200 L=9.1786e-05(SE6.8e-06) grad=+2.056e-03 -> da=-0.0702 (toward uniform)
+  descent from a_front=2.516:
+    step 0: a_front=2.5160 L=9.8684e-05(SE1.2e-05) grad=-8.195e-04 -> da=+0.0800 
+    step 1: a_front=2.5960 L=1.3374e-04(SE9.5e-06) grad=+1.775e-03 -> da=-0.1000 (toward uniform)
+    step 2: a_front=2.4960 L=1.1874e-04(SE1.6e-05) grad=-1.607e-03 -> da=+0.1000  NaN1
+    step 3: a_front=2.5960 L=1.3374e-04(SE9.5e-06) grad=+1.775e-03 -> da=-0.1000 (toward uniform)
+    step 4: a_front=2.4960 L=1.1874e-04(SE1.6e-05) grad=-1.607e-03 -> da=+0.1000  NaN1
+
+# surrogate optimum (of curve points) = a_front 2.516 (L=9.8684e-05)
+
+# (4) HELD-OUT per-event rel_RMSE (E6b protocol, frozen-from-uniform estimator)
+geometry | held-out rel_RMSE | SE
+uniform                | 0.03089 | 4.14e-04
+earlier_k16            | 0.02969 | 5.60e-05
+E7_surr_opt(a=2.516)   | 0.02969 | 5.60e-05
+
+# (5)/(6) INTERPRETATION

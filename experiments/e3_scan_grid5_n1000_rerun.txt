@@ -1,0 +1,22 @@
+# E3 controllability scan  N=50 a0=2.3 A_tot=115.0mm  gap=5.7(uniform)  E=10000.0  N_ev=1000 seeds=[1, 2, 3, 4, 5, 6]
+# candidates: 1 uniform, 5 two-region, 25 three-region
+
+# uniform front_fraction = 0.5548 (empirical SE 0.0006)
+# targets: below=0.5048 near=0.5548 above=0.6048  (delta=0.05)
+
+# reachable front_fraction range per parameterization:
+  uniform     : [0.5548, 0.5548]  (1 feasible profiles)
+  two_region  : [0.2621, 0.7836]  (5 feasible profiles)
+  three_region: [0.2622, 0.7841]  (25 feasible profiles)
+
+# best target-matching per parameterization (loss = (ff-target)^2):
+target | param | best_ff | best_loss | dist | SE | improve_vs_uniform | >3SE?
+below | uniform      | 0.5548 | 2.50e-03 | 0.0500 | 0.0006 | +0.0000 | no   [a=2.300]
+below | two_region   | 0.5548 | 2.50e-03 | 0.0500 | 0.0006 | +0.0000 | no   [a_front=2.300,a_rear=2.300]
+below | three_region | 0.5068 | 4.04e-06 | 0.0020 | 0.0015 | +0.0480 | YES   [a1=2.300,a2=1.840,a3=2.709]
+near  | uniform      | 0.5548 | 0.00e+00 | 0.0000 | 0.0006 | +0.0000 | no   [a=2.300]
+near  | two_region   | 0.5548 | 0.00e+00 | 0.0000 | 0.0006 | +0.0000 | no   [a_front=2.300,a_rear=2.300]
+near  | three_region | 0.5542 | 3.67e-07 | 0.0006 | 0.0007 | -0.0006 | no   [a1=2.300,a2=2.300,a3=2.300]
+above | uniform      | 0.5548 | 2.50e-03 | 0.0500 | 0.0006 | +0.0000 | no   [a=2.300]
+above | two_region   | 0.5548 | 2.50e-03 | 0.0500 | 0.0006 | +0.0000 | no   [a_front=2.300,a_rear=2.300]
+above | three_region | 0.6025 | 5.35e-06 | 0.0023 | 0.0011 | +0.0477 | YES   [a1=2.300,a2=2.760,a3=1.891]

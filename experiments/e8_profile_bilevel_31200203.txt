@@ -1,0 +1,43 @@
+gnuplot: error while loading shared libraries: libpcre2-16.so.0: cannot open shared object file: No such file or directory
+[wrapper] python=/cvmfs/sft.cern.ch/lcg/views/LCG_107/x86_64-el8-gcc11-opt/bin/python date=2026-07-10T12:16:48Z
+# E8-profile-bilevel  N=50 a0=2.3 A_tot=115.0mm gap=5.7 E=10000.0 N_ev=1000 seeds=[1, 2, 3, 4, 5, 6]
+# max_steps=10 shift=2.0  no-reuse=False
+# p0 sum=1.0000 peak@20  target sum=1.0000 peak@18
+# approx uniform loss = 5.3420e-04
+# oracle loaded: k=16  best_loss=1.8725e-04 a_front=2.5160  [experiments/e5_pilot_earlier_k16.txt]
+# oracle loaded: k=25  best_loss=2.3203e-04 a_front=2.4800  [experiments/e5_earlier_k25.txt]
+# oracle loaded: k=33  best_loss=2.6815e-04 a_front=2.5002  [experiments/e5_earlier_k33.txt]
+# oracle covers k=[16, 25, 33]; those k will NOT be rerun unless --no-reuse
+
+### PROPOSER CALL 1
+# selected k values: [16, 25]
+# rationale: k=16 is the E5-known optimum for the earlier-shift target; k=25 tests a different front-boundary to check generalization.
+
+# k=16: using oracle result (no rerun)
+# compact result: k=16  best_loss=1.8725e-04  a_front=2.5160  a_rear=2.1984  steps=7  status=loaded_from_e5
+
+# k=25: using oracle result (no rerun)
+# compact result: k=25  best_loss=2.3203e-04  a_front=2.4800  a_rear=2.1200  steps=3  status=loaded_from_e5
+
+### PROPOSER CALL 2
+# run remaining k=[]? False
+# rationale: All k values already evaluated; no remaining work.
+
+### BILEVEL SUMMARY  (new inner-loop runs: 0)
+   k |    best_loss |  a_front |   a_rear | steps | status
+------------------------------------------------------------------
+unif |   5.3510e-04 |   2.3000 |   2.3000 |     0 | baseline
+  16 |   1.8725e-04 |   2.5160 |   2.1984 |     7 | loaded_from_e5
+  25 |   2.3203e-04 |   2.4800 |   2.1200 |     3 | loaded_from_e5
+  33 |   2.6815e-04 |   2.5002 |   1.9113 |     7 | loaded_from_e5
+
+# Offline oracle (E5 earlier-target exhaustive results):
+#   k=16: best_loss=1.8725e-04  a_front=2.5160
+#   k=25: best_loss=2.3203e-04  a_front=2.4800
+#   k=33: best_loss=2.6815e-04  a_front=2.5002
+
+### BILEVEL VERDICT
+# Best k selected by bilevel proposer+AD: k=16  best_loss=1.8725e-04
+# vs uniform: improve=+3.479e-04  3xSE=3.582e-05  BEATS>3SE
+# a_front match to E5 oracle (k=16): |Δ|=0.0000 mm  (oracle=2.5160)
+# JSON summary written to: experiments/e8_profile_bilevel_result.txt

@@ -1,0 +1,19 @@
+# E8 DRY-RUN (candidates 1-2)  N=50 a0=2.3 A_tot=115.0 gap=5.7 N_ev=1000 energies=[1, 3, 10, 30]G
+# train=[1, 2, 3, 4] test=[5, 6, 7, 8]
+# proposer table: ['uniform', 'two_region_k16']
+# frozen estimator |w|=12.52 b=+4.354
+
+## CANDIDATE: uniform (regions=1, k=None)
+  (uniform: no inner loop, 0 free DOF)
+
+## CANDIDATE: two_region_k16 (regions=2, k=16)
+  [AD/FD gate @a_front=2.00] AD=+5.868e-04 FD=-3.334e-04 ratio=-1.76 FAIL
+  !! inner loop GATE_FAIL — skipping candidate
+
+# HELD-OUT per-event rel_RMSE (E6b protocol)
+geometry | frozen rel_RMSE | SE | refit rel_RMSE | SE | worst-E(frozen)
+uniform            | 0.03089 | 4.1e-04 | 0.03089 | 4.1e-04 | 0.03992
+earlier_k16_ref    | 0.02969 | 5.6e-05 | 0.02709 | 1.3e-04 | 0.03926
+
+# DRY-RUN VERDICT
+#   INCOMPLETE — a candidate failed; pipeline needs inspection.

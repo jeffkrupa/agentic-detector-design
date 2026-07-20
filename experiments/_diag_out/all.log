@@ -1,0 +1,5 @@
+srun: No OS_VER constraint specified. Defaulting to OS_VER:8.6 for partition 'roma'
+[uniform] saved (2000, 40) -> experiments/_diag_out/uniform.npy
+[fine_at_max] saved (2000, 40) -> experiments/_diag_out/fine_at_max.npy
+[coarse_at_max] saved (2000, 40) -> experiments/_diag_out/coarse_at_max.npy
+ALL_DONE

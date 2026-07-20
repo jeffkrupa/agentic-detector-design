@@ -1,0 +1,9 @@
+
+# shower_max_depth  wrt=a  N=1000  seeds=[1, 2]
+# AD = -73.7  (SE 50.8)
+epsilon | AD | FD | AD/FD | FD_SE | notes
+   0.01 | -73.7 | -14.2 | +5.190 | 87.5 | noise-dominated
+  0.025 | -73.7 | -12.93 | +5.702 | 33.8 | noise-dominated
+   0.05 | -73.7 | -9.135 | +8.068 | 20.1 | noise-dominated
+    0.1 | -73.7 | -7.18 | +10.265 | 10.4 | noise-dominated
+    0.2 | -73.7 | -7.359 | +10.016 | 4.16 | noise-dominated

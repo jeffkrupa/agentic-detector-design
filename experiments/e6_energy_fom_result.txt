@@ -1,0 +1,29 @@
+# E6 energy-reco FOM  N=50 a0=2.3 A_tot=115.0mm gap=5.7 N_ev=1000
+# train_seeds=[1, 2, 3, 4] test_seeds=[5, 6, 7, 8] energies=[3, 10, 30]GeV geoms=['uniform', 'earlier', 'later']
+
+## Estimator: (1) total-E calibration Ê=c·ΣE
+geom | held-out rel_RMSE | SE | worst-E rel_RMSE | per-E (rel_rmse,bias,reso)
+uniform  | 0.05702 | 5.20e-04 | 0.06581 | 3G:(0.0658,+0.0556,0.0351)  10G:(0.0522,+0.0298,0.0428)  30G:(0.0518,-0.0054,0.0515)
+earlier  | 0.05661 | 2.21e-04 | 0.06504 | 3G:(0.0650,+0.0568,0.0316)  10G:(0.0509,+0.0294,0.0414)  30G:(0.0527,-0.0075,0.0522)
+later    | 0.05823 | 7.36e-04 | 0.06614 | 3G:(0.0661,+0.0566,0.0340)  10G:(0.0522,+0.0302,0.0424)  30G:(0.0554,-0.0074,0.0548)
+# verdict (structured vs uniform, held-out):
+#   earlier: rel_RMSE improve=+4.08e-04 (3xSE=1.69e-03) no; worst-E improve=+7.67e-04
+#   later: rel_RMSE improve=-1.21e-03 (3xSE=2.70e-03) no; worst-E improve=-3.31e-04
+
+## Estimator: (2) ridge on raw layer E
+geom | held-out rel_RMSE | SE | worst-E rel_RMSE | per-E (rel_rmse,bias,reso)
+uniform  | 0.02739 | 8.11e-04 | 0.03237 | 3G:(0.0324,+0.0059,0.0318)  10G:(0.0257,+0.0017,0.0256)  30G:(0.0232,-0.0002,0.0232)
+earlier  | 0.02440 | 3.11e-04 | 0.02754 | 3G:(0.0275,+0.0036,0.0273)  10G:(0.0231,+0.0007,0.0231)  30G:(0.0221,-0.0011,0.0221)
+later    | 0.02656 | 7.94e-04 | 0.02969 | 3G:(0.0297,+0.0052,0.0292)  10G:(0.0236,+0.0013,0.0236)  30G:(0.0257,-0.0013,0.0257)
+# verdict (structured vs uniform, held-out):
+#   earlier: rel_RMSE improve=+2.99e-03 (3xSE=2.61e-03) BEATS>3SE; worst-E improve=+4.83e-03
+#   later: rel_RMSE improve=+8.25e-04 (3xSE=3.41e-03) no; worst-E improve=+2.68e-03
+
+## Estimator: (3) ridge on [totalE, norm-profile]
+geom | held-out rel_RMSE | SE | worst-E rel_RMSE | per-E (rel_rmse,bias,reso)
+uniform  | 0.08612 | 1.47e-03 | 0.13980 | 3G:(0.1398,-0.0243,0.1376)  10G:(0.0395,+0.0210,0.0334)  30G:(0.0337,-0.0029,0.0336)
+earlier  | 0.07854 | 2.36e-03 | 0.12667 | 3G:(0.1267,-0.0310,0.1228)  10G:(0.0345,+0.0192,0.0287)  30G:(0.0352,-0.0041,0.0350)
+later    | 0.07984 | 1.36e-03 | 0.12828 | 3G:(0.1283,-0.0312,0.1244)  10G:(0.0343,+0.0189,0.0287)  30G:(0.0384,-0.0041,0.0382)
+# verdict (structured vs uniform, held-out):
+#   earlier: rel_RMSE improve=+7.58e-03 (3xSE=8.35e-03) no; worst-E improve=+1.31e-02
+#   later: rel_RMSE improve=+6.28e-03 (3xSE=6.01e-03) BEATS>3SE; worst-E improve=+1.15e-02

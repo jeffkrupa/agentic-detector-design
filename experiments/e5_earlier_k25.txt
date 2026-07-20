@@ -1,0 +1,16 @@
+# E5 combo=earlier_k25  N=50 a0=2.3 A_tot=115.0mm gap=5.7 E=10000.0 N_ev=1000 seeds=[1, 2, 3, 4, 5, 6]
+# p0 sum=1.0000 peak@20; target='earlier' sum=1.0000 peak@18
+# uniform loss (this target) = 5.3510e-04  SE=8.44e-06
+
+### RUN target=earlier k=25  (start uniform a_front=2.3)
+step | a_front | a_rear | loss | loss_SE | grad | step_size | notes
+   0 | 2.3000 | 2.3000 | 5.3510e-04 | 8.44e-06 | -1.959e-03 | -0.0800 | [AD/FD check: AD=-1.959e-03 FD=-3.265e-03 ratio=+0.60 OK] 
+   1 | 2.3800 | 2.2200 | 3.5052e-04 | 1.55e-05 | -3.526e-03 | -0.1000 | 
+   2 | 2.4800 | 2.1200 | 2.3203e-04 | 5.09e-06 | -3.395e-05 | -0.0014 | 
+# early-stop: |da|<0.01mm
+
+# SUMMARY combo=earlier_k25
+#   uniform loss          = 5.3510e-04 (SE 8.44e-06)
+#   final/best AD loss    = 2.3203e-04 (SE 5.09e-06) at a_front=2.4800 a_rear=2.1200
+#   AD beats uniform by >3xSE? YES (improve=+3.031e-04, 3xSE=2.957e-05)
+#   [same-k grid best: fill from E4/E3b logs for k=25, target=earlier]

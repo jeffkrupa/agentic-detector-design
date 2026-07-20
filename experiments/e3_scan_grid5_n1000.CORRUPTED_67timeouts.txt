@@ -1,0 +1,89 @@
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+[sim] subprocess timed out after 300.0s; treating as failed run: /sdf/data/atlas/u/jkrupa/agentic/diffcalo/hepemshow/build/HepEmShow
+# E3 controllability scan  N=50 a0=2.3 A_tot=115.0mm  gap=5.7(uniform)  E=10000.0  N_ev=1000 seeds=[1, 2, 3, 4, 5, 6]
+# candidates: 1 uniform, 5 two-region, 25 three-region
+
+# uniform front_fraction = 0.5548 (empirical SE 0.0006)
+# targets: below=0.5048 near=0.5548 above=0.6048  (delta=0.05)
+
+# reachable front_fraction range per parameterization:
+  uniform     : [0.5548, 0.5548]  (1 feasible profiles)
+  two_region  : [0.2621, 0.7836]  (5 feasible profiles)
+  three_region: [0.2622, 0.7841]  (25 feasible profiles)
+
+# best target-matching per parameterization (loss = (ff-target)^2):
+target | param | best_ff | best_loss | dist | SE | improve_vs_uniform | >3SE?
+below | uniform      | 0.5548 | 2.50e-03 | 0.0500 | 0.0006 | +0.0000 | no   [a=2.300]
+below | two_region   | 0.5548 | 2.50e-03 | 0.0500 | 0.0006 | +0.0000 | no   [a_front=2.300,a_rear=2.300]
+below | three_region | 0.4647 | 1.61e-03 | 0.0401 | 0.0011 | +0.0099 | YES   [a1=1.380,a2=3.220,a3=2.300]
+near  | uniform      | 0.5548 | 0.00e+00 | 0.0000 | 0.0006 | +0.0000 | no   [a=2.300]
+near  | two_region   | 0.5548 | 0.00e+00 | 0.0000 | 0.0006 | +0.0000 | no   [a_front=2.300,a_rear=2.300]
+near  | three_region | 0.4647 | 8.12e-03 | 0.0901 | 0.0011 | -0.0901 | no   [a1=1.380,a2=3.220,a3=2.300]
+above | uniform      | 0.5548 | 2.50e-03 | 0.0500 | 0.0006 | +0.0000 | no   [a=2.300]
+above | two_region   | 0.5548 | 2.50e-03 | 0.0500 | 0.0006 | +0.0000 | no   [a_front=2.300,a_rear=2.300]
+above | three_region | 0.4647 | 1.96e-02 | 0.1401 | 0.0011 | -0.0901 | no   [a1=1.380,a2=3.220,a3=2.300]

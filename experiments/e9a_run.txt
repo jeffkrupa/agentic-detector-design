@@ -1,0 +1,37 @@
+# E9a multi-region AD budget chain validation
+# N=50 a0=2.3 A_tot=115.0mm gap=5.7 E=10000.0
+# splits=(16, 33) n1=16, n2=17, n3=17
+# n_events=500 seeds=[1, 2, 3, 4, 5, 6]
+# target: earlier_2 (shift=2.0 layers earlier)
+
+# p0: sum=1.000000 peak_layer=19
+# p_target: sum=1.000000 peak_layer=17
+# uniform loss = 5.3468e-04 (SE 1.23e-05)
+# initial point: a1=2.3 a2=2.3 a3=2.3000 (uniform = 2.3)
+
+
+step | a1     | a2     | a3     | loss    | loss_SE | g1      | g2      | notes
+   0 | 2.3000 | 2.3000 | 2.3000 | 5.3468e-04 | 1.23e-05 | -1.482e-03 | +5.252e-04 | [FD-check]
+
+### Step-0 AD vs FD validation ###
+param | AD        | AD_SE     | FD        | FD_SE     | AD/FD  | sign
+a1    | -1.4823e-03 | 8.155e-04 | -2.2202e-03 | 2.297e-04 | +0.6677 | UNRESOLVED  (AD_SNR=1.8 FD_SNR=9.7)
+a2    | +5.2525e-04 | 4.181e-04 | -3.2396e-04 | 2.632e-04 | -1.6213 | UNRESOLVED  (AD_SNR=1.3 FD_SNR=1.2)
+
+   1 | 2.3500 | 2.2500 | 2.3029 | 4.4299e-04 | 8.40e-06 | -2.021e-03 | -4.865e-04 | 
+   2 | 2.4182 | 2.2963 | 2.1925 | 3.0011e-04 | 1.46e-05 | -1.567e-03 | -1.697e-04 | 
+   3 | 2.4710 | 2.3125 | 2.1266 | 1.9458e-04 | 7.33e-06 | +8.521e-04 | +5.532e-04 | 
+   4 | 2.4423 | 2.2598 | 2.2063 | 2.4546e-04 | 1.03e-05 | -1.482e-03 | -3.136e-04 | 
+   5 | 2.4923 | 2.2897 | 2.1294 | 1.7195e-04 | 9.41e-06 | -4.046e-05 | +2.743e-04 | 
+   6 | 2.4936 | 2.2635 | 2.1542 | 1.7831e-04 | 6.46e-06 | -1.349e-03 | -4.404e-04 | 
+   7 | 2.5391 | 2.3055 | 2.0695 | 1.6056e-04 | 4.79e-06 | -9.529e-04 | -1.654e-04 | 
+
+### SUMMARY ###
+uniform loss:           5.3468e-04 (SE 1.23e-05)
+AD best loss:           1.6056e-04 (SE 4.79e-06) at a1=2.5391 a2=2.3055 a3=2.0695
+improvement:            +3.741e-04 (3xSE threshold: 3.952e-05)
+AD beats uniform >3xSE: YES
+E4 grid best (three-region, earlier): 3.231e-04
+AD final vs E4 grid best: 0.497x
+
+# Result written to experiments/e9a_result.json

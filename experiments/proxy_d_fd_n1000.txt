@@ -1,0 +1,9 @@
+
+# proxy D = sum_l (Ebar_e - Ebar_g)^2   N=1000 seeds=[1, 2]
+# AD dD/d[a,g,E] = [-2.226e+04, 3523, 13.88]  (matched seeds)
+observable | parameter | epsilon | AD | FD | AD/FD | FD_noise | notes
+proxy_D | gap(g) |  0.05 | +3523.3 | +2.1126e+05 | +0.017 | 6.42e+03 | 
+proxy_D | gap(g) |   0.1 | +3523.3 | -13064 | -0.270 | 4.34e+03 | 
+proxy_D | gap(g) |  0.25 | +3523.3 | -2703.3 | -1.303 | 1.09e+04 | noise-dominated
+proxy_D | gap(g) |   0.5 | +3523.3 | -9841.4 | -0.358 | 733 | 
+proxy_D | gap(g) |     1 | +3523.3 | +5242.2 | +0.672 | 5.95e+03 | noise-dominated

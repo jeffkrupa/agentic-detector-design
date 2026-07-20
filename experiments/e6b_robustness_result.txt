@@ -1,0 +1,11 @@
+# E6 energy-reco FOM  N=50 a0=2.3 A_tot=115.0mm gap=5.7 N_ev=1000
+# train_seeds=[1, 2, 3, 4] test_seeds=[5, 6, 7, 8] energies=[1, 3, 10, 30]GeV geoms=['uniform', 'earlier_k16', 'later_k16', 'earlier_k25', 'later_k25']
+
+## E6b ridge-on-raw-layer-E — held-out
+geometry | rel_RMSE | SE | worst-E | per-E rel_RMSE(bias,reso) | vs uniform | verdict
+uniform      | 0.03089 | 4.14e-04 | 0.03992 | 1G:0.0399(+0.010,0.0387) 3G:0.0319(+0.003,0.0317) 10G:0.0256(+0.001,0.0256) 30G:0.0232(-0.000,0.0232) | — | reference
+earlier_k16  | 0.02709 | 1.34e-04 | 0.03406 | 1G:0.0341(+0.005,0.0336) 3G:0.0273(+0.002,0.0272) 10G:0.0231(+0.001,0.0231) 30G:0.0221(-0.001,0.0221) | rr+3.80e-03(3SE1.3e-03)> wE+5.86e-03 bins4/4 | PASS
+later_k16    | 0.02961 | 8.25e-04 | 0.03763 | 1G:0.0376(+0.008,0.0367) 3G:0.0293(+0.003,0.0291) 10G:0.0236(+0.001,0.0235) 30G:0.0257(-0.001,0.0257) | rr+1.29e-03(3SE2.8e-03)≤ wE+2.29e-03 bins3/4 | fragile
+earlier_k25  | 0.02932 | 5.69e-04 | 0.03774 | 1G:0.0377(+0.013,0.0355) 3G:0.0288(+0.003,0.0286) 10G:0.0258(+0.000,0.0258) 30G:0.0227(-0.001,0.0226) | rr+1.57e-03(3SE2.1e-03)≤ wE+2.18e-03 bins3/4 | fragile
+later_k25    | 0.02992 | 2.06e-04 | 0.03874 | 1G:0.0387(+0.006,0.0382) 3G:0.0300(+0.003,0.0297) 10G:0.0255(+0.002,0.0254) 30G:0.0229(-0.001,0.0229) | rr+9.69e-04(3SE1.4e-03)≤ wE+1.18e-03 bins4/4 | fragile
+# PASS = >3xSE on rel_RMSE AND wins >=2/4 energy bins; fragile = improves but <3xSE or 1-bin; no-gain = uniform matches/beats

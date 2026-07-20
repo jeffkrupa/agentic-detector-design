@@ -1,0 +1,21 @@
+# E3b two-region split scan  N=50 a0=2.3 A_tot=115.0mm gap=5.7(uniform) E=10000.0 N_ev=1000 seeds=[1, 2, 3, 4, 5, 6]
+# splits k=[16, 25, 33]  grid=11 over [0.6,1.4]  feasible/split={16: 11, 25: 11, 33: 11}
+# total candidates (incl uniform): 34
+
+# ---- DIAGNOSTICS ----
+# 1. total forward runs attempted: 204 (34 profiles x 6 seeds)
+# 2. timeouts/NaNs: 0
+# 3. budget-conservation violations: 0 (asserted per profile)
+# 4. uniform front_fraction = 0.5548 (empirical SE 0.0006)
+# 5. reachable ff range per split:
+#      k=16: [0.4124, 0.6766]  (11 profiles)
+#      k=25: [0.2621, 0.7836]  (11 profiles)
+#      k=33: [0.2607, 0.7840]  (11 profiles)
+# targets: below=0.5048 near=0.5548 above=0.6048 (delta=0.05)
+
+split k | grid | reachable ff range | best below loss | best near loss | best above loss | best params | verdict
+k=16 | 11 | [0.4124,0.6766] | 3.10e-05 | 4.53e-07 | 1.67e-06 | a_front=2.668,a_rear=2.127 | ARTIFACT (below:>3SE,above:>3SE)
+k=25 | 11 | [0.2621,0.7836] | 6.13e-05 | 1.92e-06 | 2.14e-05 | a_front=2.484,a_rear=2.116 | ARTIFACT (below:>3SE,above:>3SE)
+k=33 | 11 | [0.2607,0.7840] | 4.57e-05 | 1.61e-06 | 8.83e-06 | a_front=2.484,a_rear=1.943 | ARTIFACT (below:>3SE,above:>3SE)
+
+# OVERALL: ARTIFACT — a two-region split reaches an off-uniform target >3xSE better than uniform
