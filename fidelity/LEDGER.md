@@ -55,6 +55,30 @@ Protocol: `PROTOCOL.md`. Fault inventory & candidates: `RECON.md` §B/§D.
   — dToCalo never enters a returned step length; the anomaly rides on the
   layer translation's prefix dot. Knob 2 was widened to the full
   iLayer==N−1 layer-frame path (still ⊂ knob 1).
-- **Next**: condor validation batch (proposed: gap-AD knob-1-on,
-  absorber-AD knob-1-on, gap-AD knob-2-only × 10 seeds × 20k = 600k ev
-  ≈ 31 CPU-h) vs the standing 1M FD truth + existing knob-off AD.
+- **Validation** (cluster 3911763, 2026-07-21, 26/30 units ok — failed:
+  gap_knob1 s2/s8, abs_knob1 s9/s10, rc=−1; summary:
+  `fidelity/wave1_validation_summary.json`):
+  - **P1 FAIL (overcorrection)**: gap core L5–18 AD/FD = **0.566 ± 0.027**
+    (from 3.02 ± 0.15). The 3× inflation is gone but AD now undershoots FD
+    ~2×; deficit is depth-flat through the core.
+  - **P2 PASS**: L49 gap ratio → −0.23 ± 2.21 under knob 1 (217×);
+    **3.22 ± 1.91 under knob-2-only (15×)** with the core window untouched
+    (3.016 ± 0.150 vs knob-off 3.020 — z = −0.02, clean pipeline check).
+  - **P3 FAIL**: absorber core AD/FD 0.772 → **0.545 ± 0.010** (−29%); the
+    knob is not gap-specific — it discards legitimate derivative mass in
+    both channels.
+  - **P4 PASS** (gap configs clean; abs config 3/50 layers >3σ — likely
+    seed fluctuation, abs/gap knob-1 primals are identical physics).
+- **Interpretation**: the zombie-prefix-dot mechanism is CONFIRMED (the
+  depth-dependent inflation and L49 anomaly both die exactly as predicted),
+  but the implemented severing is too broad: stop_grad-ing ALL local-frame
+  geometry dots for gradient-disabled tracks also kills their legitimate
+  local boundary-motion contribution → uniform ~0.55 deficit in both
+  channels (cf. absorber's pre-existing 0.77 over-severing deficit).
+  RECON's original sketch (re-anchor the position dot to the local frame,
+  i.e. cancel only the accumulated translation prefix dot while KEEPING the
+  local thickness/half-length dots) is a strictly narrower intervention —
+  wave-2 candidate.
+- **Proposed verdict (awaiting user)**: reject knob 1 as-is (overcorrects);
+  accept knob 2 (`--last-layer-local`) as a targeted L49 fix (15× collapse,
+  zero side effects); queue "prefix-only re-anchoring" as wave 2.
