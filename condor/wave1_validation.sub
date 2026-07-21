@@ -1,0 +1,72 @@
+# HTCondor submit file for the wave-1 knob validation (fidelity loop).
+#
+# One job per (config, seed): 3 configs x 10 seeds = 30 jobs, 20000 events
+# each (600k events total, ~31 CPU-h). The runner appends its per-unit JSONL
+# directly to EOS (fidelity/wave1_runs/<config>_s<seed>.jsonl); EOS writes
+# need the kerberos credential (MY.SendCredential). Condor log/out/err live
+# on AFS (EOS-hosted condor logs are unreliable).
+#
+# NOTE (CERN gotcha): standard batch schedds REJECT any /eos path in the
+# submit context, so submit from an AFS cwd and keep the executable on AFS.
+# The wrapper cd's into the EOS repo at runtime on the worker.
+#
+# Submit:
+#   cd /afs/cern.ch/user/j/jekrupa/condor_bin
+#   condor_submit /eos/user/j/jeffkrup/agentic/agentic-detector-design/condor/wave1_validation.sub
+universe   = vanilla
+executable = /afs/cern.ch/user/j/jekrupa/condor_bin/run_wave1_validation.sh
+
+arguments  = --config $(CONFIG) --seed $(SEED) --n-events 20000
+
+# Forward the kerberos credential so the worker can write to EOS.
+MY.SendCredential = true
+
+TAG = wave1_validation
+log    = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).log
+output = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).out
+error  = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).err
+
+# Outputs go directly to EOS; no condor file transfer.
+should_transfer_files = NO
+
+# Single-threaded forward-sim job; ~62 min of sim per unit.
+request_cpus   = 1
+request_memory = 2GB
+request_disk   = 2GB
+
+# "workday" = 8 h max walltime; each unit needs ~1-1.5 h (measured 0.19 s/ev
+# locally), so this leaves ample margin for slow nodes + EOS latency.
++JobFlavour = "workday"
+
+queue CONFIG,SEED from (
+gap_ad_knob1, 1
+gap_ad_knob1, 2
+gap_ad_knob1, 3
+gap_ad_knob1, 4
+gap_ad_knob1, 5
+gap_ad_knob1, 6
+gap_ad_knob1, 7
+gap_ad_knob1, 8
+gap_ad_knob1, 9
+gap_ad_knob1, 10
+abs_ad_knob1, 1
+abs_ad_knob1, 2
+abs_ad_knob1, 3
+abs_ad_knob1, 4
+abs_ad_knob1, 5
+abs_ad_knob1, 6
+abs_ad_knob1, 7
+abs_ad_knob1, 8
+abs_ad_knob1, 9
+abs_ad_knob1, 10
+gap_ad_knob2, 1
+gap_ad_knob2, 2
+gap_ad_knob2, 3
+gap_ad_knob2, 4
+gap_ad_knob2, 5
+gap_ad_knob2, 6
+gap_ad_knob2, 7
+gap_ad_knob2, 8
+gap_ad_knob2, 9
+gap_ad_knob2, 10
+)

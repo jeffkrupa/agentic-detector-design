@@ -273,14 +273,22 @@ def run_forward_gap(dp: DesignPoint, seeded_param: str, n_events: int, seed: int
 
 
 def run_forward(dp: DesignPoint, seeded_param: str, n_events: int, seed: int,
-                ctrl: Optional[CtrlFlags] = None, use_cache: bool = True) -> RawRun:
-    """Forward-mode run seeding exactly one differentiable input."""
+                ctrl: Optional[CtrlFlags] = None, use_cache: bool = True,
+                extra_args: Optional[list] = None) -> RawRun:
+    """Forward-mode run seeding exactly one differentiable input.
+
+    ``extra_args`` (optional) are appended verbatim to the command line (e.g.
+    experiment-specific long options the ctrl-flag schema does not cover); they
+    are part of ``args`` and therefore of the cache key.
+    """
     if seeded_param not in DIFFERENTIABLE_PARAMS:
         raise ValueError(f"seeded_param must be one of {DIFFERENTIABLE_PARAMS}")
     cfg = load_config()
     ctrl = ctrl or ctrl_flags_from_config(cfg)
     binary = cfg["paths"]["forward_bin"]
     args = _common_args(dp, ctrl, n_events, seed, cfg, seeded_param=seeded_param)
+    if extra_args:
+        args += [str(x) for x in extra_args]
     prov = binary_provenance(binary)
     key = _flag_hash(prov, args)
 
