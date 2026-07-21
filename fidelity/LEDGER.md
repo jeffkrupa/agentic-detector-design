@@ -119,4 +119,43 @@ Protocol: `PROTOCOL.md`. Fault inventory & candidates: `RECON.md` §B/§D.
      batch timeout raised to 10800s regardless.
   6. Variance: tail-variance win retained (≤0.3× at L40+), gap core
      variance in [0.5, 1.2]×.
-- **Status**: planned.
+- **Status**: GATED (2026-07-21) — all gate checks pass; awaiting condor
+  validation approval.
+- **Implementation**: hepemshow branch `knob/prefix-anchor` @ `61c7bb5`
+  (1 commit over `agent-knobs` @ e9ed89b). 4 files, +44/−9:
+  `--stopgrad-prefix-anchor` long option (id 1008) in `InputParameters.hh`;
+  third bool through `Geometry::ConfigureLocalFrameStopGrad`; in
+  `CalculateDistanceToOut` a new `sgPrefix` path severs ONLY
+  `trLayeri = fLayerStartX[iLayer]` (+ the calo shift / dToCalo via the
+  existing `sgCalo` path) while `layerThick`, the abs/gap half-lengths, and
+  `trAbs`/`trGap` keep their dots. Decomposition note: `trAbs`/`trGap` are
+  computed in the *layer-local* frame already (`0.5*fAbsThick[i]`,
+  `fAbsThick[i]+0.5*fGapThick[i]` — no `trLayeri` inside), so no rewrite was
+  needed; keeping them alive is exact. Knob interaction: knob 1 (full sever)
+  wins over prefix-anchor; prefix-anchor supersedes knob 2's full-local
+  severing on the last layer (same prefix/calo severing there, but the last
+  layer's local dots stay alive; prefix-anchor ⊇ knob 2's original
+  calo-shift severing). Shared binaries and g4hepem untouched; baseline
+  working tree restored after the build.
+- **Gate results** (agent builds, canonical flags, gap seed unless noted):
+  - G1 build equivalence: agent fwd knob-off ≡ shared `build/HepEmShow`,
+    seed 1, edeps bit-identical. PASS.
+  - G2 primal identity: knob on vs off, mean_E/var_E byte-identical, seeds
+    1–2, gap AND absorber seeds (all 50 layers' mean_dE change ⇒ knob
+    active). PASS.
+  - G3 forward=reverse: knob on, n=500, gap seed: Σ fwd mean_dE
+    = −12.719654630933 vs reverse barInputs gap row −12.719654630928
+    (rel 3.8e−13). PASS.
+  - G4 NaN scan: all columns finite, seeds 1–2, gap+abs, knob off+on. PASS.
+  - G5 runtime: ON 305.5 s vs OFF 324.8 s (n=2000, gap seed, same host,
+    sequential) ⇒ ratio 0.94 — no slowdown (vs knob-1's +53%).
+    Prediction 5 satisfied.
+- **Preview vs predictions** (n=2000, 2 seeds, gap seed — qualitative):
+  per-layer mean_dE (FD | off s1/s2 | ON s1/s2): L10 15.2 | 39.5/44.2 |
+  7.4/13.6; L15 17.5 | 52.2/40.3 | 12.7/16.0; L2 2.03 | 1.8/3.0 | 1.2/1.2;
+  L49 −5.4 | −272/−417 | −2.4/−120. Core lands between knob-off ~3×
+  inflation and knob-1 ~0.5× attenuation, near FD (prediction-1 pattern);
+  L49 s1 collapses, s2 −120 matches the wave-1 knob-1 s2 preview value
+  (same residual rare-event tail, non-geometry path — the 2-seed tail is
+  known heavy; defer to validation). L20 flips sign at n=2000 (noisy layer,
+  off s2 = 9.4 there) — watch at validation.
