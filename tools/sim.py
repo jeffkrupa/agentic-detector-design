@@ -138,8 +138,47 @@ def _common_args(dp: DesignPoint, ctrl: CtrlFlags, n_events: int, seed: int,
     return args
 
 
-def _flag_hash(binary: str, args: list) -> str:
-    payload = json.dumps([binary, args], sort_keys=True)
+_PROVENANCE_CACHE: dict = {}
+
+
+def binary_provenance(binary: str) -> dict:
+    """Provenance of a sim binary: resolved path, repo git rev, mtime+size.
+
+    The git rev is taken from the repo containing the binary (``git -C`` walks
+    up from the build dir). Fails soft: if git is unavailable or the binary is
+    not inside a repo, ``binary_git_rev`` is None and mtime+size (which also
+    cover uncommitted rebuilds) remain the discriminating fields.
+    """
+    resolved = str(Path(binary).resolve())
+    cached = _PROVENANCE_CACHE.get(resolved)
+    if cached is not None:
+        return cached
+    if not Path(resolved).exists():
+        raise FileNotFoundError(f"binary not found: {binary} (check config.yaml paths)")
+    st = os.stat(resolved)
+    git_rev = None
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(Path(resolved).parent), "rev-parse", "--short", "HEAD"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=30)
+        if proc.returncode == 0:
+            git_rev = proc.stdout.decode().strip() or None
+    except Exception:
+        git_rev = None
+    prov = {
+        "binary_path": resolved,
+        "binary_git_rev": git_rev,
+        "binary_mtime_ns": int(st.st_mtime_ns),
+        "binary_size": int(st.st_size),
+    }
+    _PROVENANCE_CACHE[resolved] = prov
+    return prov
+
+
+def _flag_hash(prov: dict, args: list) -> str:
+    payload = json.dumps([prov["binary_path"], prov["binary_git_rev"],
+                          prov["binary_mtime_ns"], prov["binary_size"], args],
+                         sort_keys=True)
     return hashlib.sha1(payload.encode()).hexdigest()[:16]
 
 
@@ -217,7 +256,8 @@ def run_forward_gap(dp: DesignPoint, seeded_param: str, n_events: int, seed: int
     ctrl = ctrl or ctrl_flags_from_config(cfg)
     binary = cfg["paths"]["forward_bin"]
     args = _common_args(dp, ctrl, n_events, seed, cfg, seeded_param=seeded_param)
-    key = _flag_hash(binary, ["__gap__", *args])
+    prov = binary_provenance(binary)
+    key = _flag_hash(prov, ["__gap__", *args])
 
     if use_cache:
         cached = _cache_load(cfg, key)
@@ -227,7 +267,8 @@ def run_forward_gap(dp: DesignPoint, seeded_param: str, n_events: int, seed: int
 
     arr, rc, nan = _execute(binary, args, expect="edeps_gap", seed=seed)
     if use_cache and rc == 0 and arr is not None:
-        _cache_store(cfg, key, edeps_gap=arr, rc=rc, nan=nan)
+        _cache_store(cfg, key, edeps_gap=arr, rc=rc, nan=nan,
+                     prov=json.dumps(prov))
     return arr
 
 
@@ -240,7 +281,8 @@ def run_forward(dp: DesignPoint, seeded_param: str, n_events: int, seed: int,
     ctrl = ctrl or ctrl_flags_from_config(cfg)
     binary = cfg["paths"]["forward_bin"]
     args = _common_args(dp, ctrl, n_events, seed, cfg, seeded_param=seeded_param)
-    key = _flag_hash(binary, args)
+    prov = binary_provenance(binary)
+    key = _flag_hash(prov, args)
 
     if use_cache:
         cached = _cache_load(cfg, key)
@@ -248,13 +290,14 @@ def run_forward(dp: DesignPoint, seeded_param: str, n_events: int, seed: int,
             return RawRun(edeps=cached["edeps"], bar_inputs=None, n_events=n_events,
                           seed=seed, mode="forward", seeded_param=seeded_param,
                           returncode=int(cached.get("rc", 0)),
-                          nan=bool(cached.get("nan", False)))
+                          nan=bool(cached.get("nan", False)), provenance=prov)
 
     edeps, rc, nan = _execute(binary, args, expect="edeps", seed=seed)
     if use_cache and rc == 0 and edeps is not None:
-        _cache_store(cfg, key, edeps=edeps, rc=rc, nan=nan)
+        _cache_store(cfg, key, edeps=edeps, rc=rc, nan=nan, prov=json.dumps(prov))
     return RawRun(edeps=edeps, bar_inputs=None, n_events=n_events, seed=seed,
-                  mode="forward", seeded_param=seeded_param, returncode=rc, nan=nan)
+                  mode="forward", seeded_param=seeded_param, returncode=rc, nan=nan,
+                  provenance=prov)
 
 
 def run_reverse(dp: DesignPoint, adjoints: np.ndarray, n_events: int, seed: int,
@@ -282,7 +325,8 @@ def run_reverse(dp: DesignPoint, adjoints: np.ndarray, n_events: int, seed: int,
         if gadj.size != dp.n_layers:
             raise ValueError(f"gap_adjoints length {gadj.size} != n_layers {dp.n_layers}")
         args += ["--bar-gap", ":".join(repr(float(x)) for x in gadj)]
-    key = _flag_hash(binary, args)
+    prov = binary_provenance(binary)
+    key = _flag_hash(prov, args)
 
     if use_cache:
         cached = _cache_load(cfg, key)
@@ -290,13 +334,14 @@ def run_reverse(dp: DesignPoint, adjoints: np.ndarray, n_events: int, seed: int,
             return RawRun(edeps=cached.get("edeps"), bar_inputs=cached["bar_inputs"],
                           n_events=n_events, seed=seed, mode="reverse",
                           seeded_param=None, returncode=int(cached.get("rc", 0)),
-                          nan=bool(cached.get("nan", False)))
+                          nan=bool(cached.get("nan", False)), provenance=prov)
 
     bar, rc, nan = _execute(binary, args, expect="barInputs", seed=seed)
     if use_cache and rc == 0 and bar is not None:
-        _cache_store(cfg, key, bar_inputs=bar, rc=rc, nan=nan)
+        _cache_store(cfg, key, bar_inputs=bar, rc=rc, nan=nan, prov=json.dumps(prov))
     return RawRun(edeps=None, bar_inputs=bar, n_events=n_events, seed=seed,
-                  mode="reverse", seeded_param=None, returncode=rc, nan=nan)
+                  mode="reverse", seeded_param=None, returncode=rc, nan=nan,
+                  provenance=prov)
 
 
 def run_reverse_per_layer(dp: DesignPoint, adjoints: np.ndarray, n_events: int,
@@ -340,7 +385,8 @@ def run_reverse_per_layer(dp: DesignPoint, adjoints: np.ndarray, n_events: int,
         args += ["--bar-gap", ":".join(repr(float(x)) for x in gadj)]
     # Distinct cache namespace so per-layer results never collide with the
     # legacy 3-row run that shares the identical command line.
-    key = _flag_hash(binary, ["__perlayer__", *args])
+    prov = binary_provenance(binary)
+    key = _flag_hash(prov, ["__perlayer__", *args])
 
     if use_cache:
         cached = _cache_load(cfg, key)
@@ -350,7 +396,8 @@ def run_reverse_per_layer(dp: DesignPoint, adjoints: np.ndarray, n_events: int,
 
     arr, rc, nan = _execute(binary, args, expect="barInputsPerLayer", seed=seed)
     if use_cache and rc == 0 and arr is not None:
-        _cache_store(cfg, key, bar_inputs_per_layer=arr, rc=rc, nan=nan)
+        _cache_store(cfg, key, bar_inputs_per_layer=arr, rc=rc, nan=nan,
+                     prov=json.dumps(prov))
     return arr
 
 

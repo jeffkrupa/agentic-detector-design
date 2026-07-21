@@ -108,6 +108,7 @@ class RawRun:
     seeded_param: Optional[str]      # forward mode: which input carried the :1 dot
     returncode: int = 0
     nan: bool = False
+    provenance: Optional[dict] = None  # binary_path / binary_git_rev / binary_mtime_ns / binary_size
 
 
 @dataclass
