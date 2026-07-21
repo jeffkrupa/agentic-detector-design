@@ -79,6 +79,44 @@ Protocol: `PROTOCOL.md`. Fault inventory & candidates: `RECON.md` §B/§D.
   i.e. cancel only the accumulated translation prefix dot while KEEPING the
   local thickness/half-length dots) is a strictly narrower intervention —
   wave-2 candidate.
-- **Proposed verdict (awaiting user)**: reject knob 1 as-is (overcorrects);
-  accept knob 2 (`--last-layer-local`) as a targeted L49 fix (15× collapse,
-  zero side effects); queue "prefix-only re-anchoring" as wave 2.
+- **Variance/cost addendum** (from per-event var_dE + condor wall times):
+  variance is NOT the price of knob 1 — severing reduces it (gap core 0.54×,
+  tails ~0.06–0.11× ⇒ absorber L49 SE at 1M: 224 → 55; heavy tail gone,
+  scatter matches √(var/N) within ~30%). Exceptions/costs: absorber core
+  variance 1.64× WORSE under knob 1, gap knob-1 runtime +53% (6524s vs
+  4262s mean → the 4 unit failures were all 7200s timeouts; raise batch
+  timeout to ~10800s in future waves). Knob 2: tail win ~0.10×, core
+  variance 1.06×, core means preserved, no slowdown, 0 failures — strict
+  improvement on every axis. (Baseline absorber itself has ~8% timeout rate;
+  knob-off reference uses 46/50 seeds.)
+- **VERDICT (user-approved 2026-07-21): knob 1 REJECTED as-is (mechanism
+  confirmed, severing too broad); knob 2 ACCEPTED.** Branch merged to
+  `agent-knobs` (@ e9ed89b, tag `wave-01-accepted`); the rejected knob-1
+  flag remains in the code, default-off, documented as diagnostic-only.
+
+## Wave 2 — prefix-only re-anchoring (PLANNED)
+
+- **Knob**: `--stopgrad-prefix-anchor 1`, branch `knob/prefix-anchor` cut
+  from `agent-knobs`, default off, derivative-only.
+- **Hypothesis**: wave 1 proved the spurious term is the *accumulated
+  translation prefix dot* re-entering severed tracks via the local-frame
+  transform; knob 1 failed because it also severed the *local* thickness /
+  half-length dots (legitimate boundary-motion signal). Cancelling ONLY the
+  prefix-sum translation dot (`fLayerStartX[iLayer]`, calo shift) for
+  gradient-disabled tracks — while keeping the current layer's own
+  thickness/half-length/sub-box-offset dots — removes the zombie inflation
+  without discarding legitimate derivative mass.
+- **Pre-registered predicted signature** (before implementation):
+  1. Gap core (L5–18) AD/FD lands in [0.8, 1.5] — strictly between knob-1's
+     0.566 and knob-off's 3.02, and closer to 1 than both.
+  2. L49 collapse retained: gap L49 ratio within ~3× of 1 (vs knob-off 49).
+  3. Absorber core in [0.60, 0.80]; result is informative either way: if it
+     stays ≈0.77 the zombie term was gap-specific; if it drops, part of the
+     absorber's apparent 0.77 was zombie inflation masking a deeper
+     over-severing deficit.
+  4. Primal byte-identical (gate).
+  5. Runtime within ~15% of baseline (fewer stop_grad ops than knob 1);
+     batch timeout raised to 10800s regardless.
+  6. Variance: tail-variance win retained (≤0.3× at L40+), gap core
+     variance in [0.5, 1.2]×.
+- **Status**: planned.
