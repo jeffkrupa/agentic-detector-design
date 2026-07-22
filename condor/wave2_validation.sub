@@ -1,0 +1,63 @@
+# HTCondor submit file for the wave-2 knob validation (fidelity loop).
+#
+# One job per (config, seed): 2 configs x 10 seeds = 20 jobs, 20000 events
+# each (400k events total, ~21 CPU-h). The runner appends its per-unit JSONL
+# directly to EOS (fidelity/wave2_runs/<config>_s<seed>.jsonl); EOS writes
+# need the kerberos credential (MY.SendCredential). Condor log/out/err live
+# on AFS (EOS-hosted condor logs are unreliable).
+#
+# NOTE (CERN gotcha): standard batch schedds REJECT any /eos path in the
+# submit context, so submit from an AFS cwd and keep the executable on AFS.
+# The wrapper cd's into the EOS repo at runtime on the worker.
+#
+# Submit:
+#   cd /afs/cern.ch/user/j/jekrupa/condor_bin
+#   condor_submit /eos/user/j/jeffkrup/agentic/agentic-detector-design/condor/wave2_validation.sub
+universe   = vanilla
+executable = /afs/cern.ch/user/j/jekrupa/condor_bin/run_wave2_validation.sh
+
+arguments  = --config $(CONFIG) --seed $(SEED) --n-events 20000
+
+# Forward the kerberos credential so the worker can write to EOS.
+MY.SendCredential = true
+
+TAG = wave2_validation
+log    = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).log
+output = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).out
+error  = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).err
+
+# Outputs go directly to EOS; no condor file transfer.
+should_transfer_files = NO
+
+# Single-threaded forward-sim job; ~1-1.6 h of sim per unit at baseline speed.
+request_cpus   = 1
+request_memory = 2GB
+request_disk   = 2GB
+
+# "workday" = 8 h max walltime; the in-process sim timeout is 10800 s
+# (wave-1 lesson: 7200 s clipped the slow absorber tail), leaving ample
+# margin for slow nodes + EOS latency.
++JobFlavour = "workday"
+
+queue CONFIG,SEED from (
+gap_ad_prefix, 1
+gap_ad_prefix, 2
+gap_ad_prefix, 3
+gap_ad_prefix, 4
+gap_ad_prefix, 5
+gap_ad_prefix, 6
+gap_ad_prefix, 7
+gap_ad_prefix, 8
+gap_ad_prefix, 9
+gap_ad_prefix, 10
+abs_ad_prefix, 1
+abs_ad_prefix, 2
+abs_ad_prefix, 3
+abs_ad_prefix, 4
+abs_ad_prefix, 5
+abs_ad_prefix, 6
+abs_ad_prefix, 7
+abs_ad_prefix, 8
+abs_ad_prefix, 9
+abs_ad_prefix, 10
+)
