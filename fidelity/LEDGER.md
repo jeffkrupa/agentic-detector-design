@@ -160,22 +160,66 @@ Protocol: `PROTOCOL.md`. Fault inventory & candidates: `RECON.md` §B/§D.
   known heavy; defer to validation). L20 flips sign at n=2000 (noisy layer,
   off s2 = 9.4 there) — watch at validation.
 
-## Wave 3 — flag-relaxation scan, prefix-anchor ON (PLANNED)
+## Wave 3 — derivative microscopy (event-matched AD/FD decomposition)
 
-- **No new code**: binary = `knob/prefix-anchor` @ 61c7bb5, `--stopgrad-prefix-anchor 1` everywhere.
-- **Hypothesis**: the universal ~0.55 core plateau is over-severing by `-x 2`.
-  **User priors (2026-07-23)**: `-f` 0 vs 0.2 = same bias (only variance);
-  `-N`/`-C` clip tails only, no bias — so those flags are exonerated a
-  priori and dropped from the scan; `-y`/`-B` knockouts predicted null.
-- **Configs** (gap-seeded, 10 seeds × 20k, paired vs the wave-2 reference):
-  `-x 1`; `-x 0`†; `-y 0`; `-B 0`; `-x 0 -y 0 -B 0`† († = 2-seed pilot with
-  NaN/tail validity gate first). ~1M new events ≈ 52 CPU-h, timeout 10800s.
-- **Pre-registered**: (1) `-y 0`, `-B 0` → plateau unchanged within ~2σ;
-  (2) `-x 1` lifts the plateau, `-x 0` lifts further toward 1 OR fails the
-  validity pilot (a result either way); (3) decision rule: plateau reaches
-  ~0.8–1.0 at relaxed `-x` with usable variance ⇒ wave 4 = smooth damping
-  (D5); plateau stays ~0.55–0.7 even at `-x 0` ⇒ severing exonerated,
-  wave 4 = score-function race term (D4); (4) primal byte-identical (pure
-  stop-grad flags).
-- **Status**: planned; wave-2 verdict closed (rejected as fix, retained as
-  diagnostic; universal-plateau finding stands).
+*(Redefined 2026-07-23, superseding the flag-relaxation scan: flag knockouts
+cannot measure bias — the severing trio suppresses variance ~1e6, so relaxing
+it hits a variance wall. jsonl entry is the twin.)*
+
+- **No new physics knob**: branch `knob/derivative-microscopy` @ `887499f`,
+  cut from `knob/prefix-anchor` @ 61c7bb5. One commit: env-gated per-event
+  dump `HEPEMSHOW_EVENT_DUMP=<path>` (3 files, +90 lines: SteppingLoop.hh/.cc,
+  EventLoop.cc). Per event: FNV-1a decision-path signature (per step:
+  particle type, pre-step layer+region, boundary-vs-physics race winner,
+  step index; per Perform: secondary counts; final track count), track/step
+  totals, 50 per-layer edeps + 50 AD dots. Strictly no-op with env unset.
+- **Hypothesis**: same-seed runs at g and g±h share the RNG stream until the
+  first discrete flip. Same-path events must satisfy per-event AD = central
+  FD to O(h²) (mismatch ⇒ severed derivative line, bisectable); diverged
+  events carry FD mass pathwise AD cannot represent (missing score term).
+  Decompose the knob-on core deficit (AD/FD ≈ 0.57) into the two parts.
+- **Gate** (n=2000, s=1, canonical flags + `--stopgrad-prefix-anchor 1`):
+  (1) env unset ⇒ edeps byte-identical to the prefix-anchor binary (primal
+  AND derivative columns) — PASS; (2) env set ⇒ edeps still byte-identical,
+  dump = 2000 lines, per-event means reproduce aggregate mean_E/mean_dE to
+  4e-14 rel — PASS; (3) same seed twice ⇒ dumps byte-identical — PASS.
+- **Result — the decomposition degenerates, decisively** (summary:
+  `fidelity/wave3_microscopy_summary.json`; raw dumps `fidelity/wave3_runs/`;
+  seeds 1–3 at h=0.05; seed-1 h-scan 0.02, 1e-3, 1e-4, 1e-6, 1e-7, 1e-11):
+  - **100.0% of events diverge at every h**, down to Δg = 1e-11 mm
+    (2000/2000 at each of 8 h values; side-vs-side and center-vs-side alike).
+  - Divergence is *saturated, not ∝ h*: median |Δsteps| ≈ 2500–2800
+    (~3% of the ~80k steps/event) whether h = 0.05 or 1e-11; per-event
+    Σ|ΔE_layer| ≈ 2970 MeV of 9300 MeV (~30% energy rearrangement) at 1e-11;
+    first differing layer = L0 for >90% of events.
+  - **Controls**: gap-seed vs energy-seed at identical g = 5.70 ⇒ 2000/2000
+    identical signatures and step counts (AD seeding does not touch the path;
+    instrumentation valid). Same binary, same seed, twice ⇒ bit-identical.
+  - Interpretation: the discrete decision path is **bit-unstable in g** —
+    every event's first gap-boundary landing re-resolves an exact-tie
+    comparison (boundary-landing arithmetic: Box on-surface early return
+    0.0 / boundary-tolerance tests / value-only layer scan,
+    RECON B6/B8) at ulp level, and one flip decorrelates the entire
+    downstream shower via the shared RNG stream. The effective branch-flip
+    density is unbounded: there is **no finite h with a same-path
+    population**, so (i) the same-path pathwise term is unmeasurable at
+    event granularity (empty set — 0/2000 at all h), and (ii) 100% of the
+    FD signal — hence the whole 0.57 core-window deficit — flows through
+    path-changed events. Same-seed per-event FD behaves as an *unpaired*
+    estimator (per-event FD noise ∝ 1/h; core FD means at h ≤ 1e-3 are pure
+    noise; at h = 0.05, seeds 1–3 give FD 399/−118/19 vs AD 82/114/111 —
+    n=2000/seed is far below the SNR needed to re-measure the 0.57).
+  - Ranked code sites (v1): the deficit cannot be pinned to severed
+    derivative lines by event-level matching; the instability lives at
+    Box.cc:113-121 (on-surface early return), Geometry.cc:287-298
+    (value-only layer scan + clamp), SteppingLoop.cc zero-step push
+    (:793/:1206) — the boundary-landing tie cluster.
+- **Implication for wave 4**: event-level microscopy cannot separate
+  pathwise error from branch-flip mass in this simulator; the drill-down
+  needs *sub-event* (track-level) matching with RNG-stream isolation, or
+  accept the score-function route (RECON D4) / surface-term route (D3) on
+  aggregate evidence alone.
+- **Status**: v1 complete (2026-07-23); awaiting human verdict. hepemshow
+  working tree restored to `phaseA-perlayer-gap-energy`; agent binaries in
+  `build_agent_fwd/rev` left at `knob/derivative-microscopy` (env-off =
+  bit-identical to prefix-anchor).

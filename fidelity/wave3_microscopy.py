@@ -159,11 +159,32 @@ def analyze_triplet(seed: int, h: float, center: str, minus: str, plus: str,
     return res
 
 
+def compare_pair(label: str, dump_a: str, dump_b: str) -> dict:
+    """Signature agreement between two runs (control / probe pairs)."""
+    eva, siga, _, nsta, _, _ = parse_dump(dump_a)
+    evb, sigb, _, nstb, _, _ = parse_dump(dump_b)
+    n = min(len(eva), len(evb))
+    assert (eva[:n] == evb[:n]).all()
+    same = siga[:n] == sigb[:n]
+    dst = np.abs(nsta[:n] - nstb[:n])
+    return {
+        "label": label,
+        "n_events": int(n),
+        "n_same_sig": int(same.sum()),
+        "frac_same_sig": float(same.mean()),
+        "median_abs_dsteps": float(np.median(dst)),
+        "n_zero_dsteps": int((dst == 0).sum()),
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--triplet", nargs=5, action="append", required=True,
                     metavar=("SEED", "H", "CENTER", "MINUS", "PLUS"),
                     help="seed h center_dump minus_dump plus_dump")
+    ap.add_argument("--pair", nargs=3, action="append", default=[],
+                    metavar=("LABEL", "DUMP_A", "DUMP_B"),
+                    help="signature-agreement control pair")
     ap.add_argument("--window", nargs=2, type=int, default=[5, 18])
     ap.add_argument("--out", default="fidelity/wave3_microscopy_summary.json")
     args = ap.parse_args()
@@ -173,12 +194,15 @@ def main() -> int:
     for seed_s, h_s, center, minus, plus in args.triplet:
         r = analyze_triplet(int(seed_s), float(h_s), center, minus, plus, lo, hi)
         results.append(r)
+    controls = [compare_pair(lbl, a, b) for lbl, a, b in args.pair]
 
     print(f"\n=== wave-3 microscopy: core window L{lo}-L{hi} ===")
     hdr = (f"{'seed':>4} {'h':>5} {'N':>5} {'div%':>6} {'AD':>9} {'FD':>9} "
            f"{'AD/FD':>6} | {'FD_same':>9} {'FD_div':>9} {'AD_same':>9} "
            f"{'AD_div':>9} | {'same AD-FD':>11} {'q99|d|':>8}")
     print(hdr)
+    def fmt(v, w, p):
+        return f"{v:>{w}.{p}f}" if v is not None else " " * (w - 4) + "n/a "
     for r in results:
         cw = r["core_window"]
         sp = cw["same_path"]
@@ -186,18 +210,26 @@ def main() -> int:
         print(f"{r['seed']:>4} {r['h']:>5} {r['n_events']:>5} "
               f"{100*r['frac_diverged']:>5.1f}% "
               f"{cw['mean_ad_all']:>9.4f} {cw['mean_fd_all']:>9.4f} "
-              f"{cw['ratio_ad_fd_all']:>6.3f} | "
-              f"{sp['fd_contrib_to_total_mean']:>9.4f} "
-              f"{dv['fd_contrib_to_total_mean']:>9.4f} "
-              f"{sp['ad_contrib_to_total_mean']:>9.4f} "
-              f"{dv['ad_contrib_to_total_mean']:>9.4f} | "
-              f"{sp['mean_ad_minus_fd']:>11.6f} "
-              f"{sp['abs_diff_quantiles']['q99']:>8.4f}")
+              f"{fmt(cw['ratio_ad_fd_all'], 6, 3)} | "
+              f"{fmt(sp['fd_contrib_to_total_mean'], 9, 4)} "
+              f"{fmt(dv['fd_contrib_to_total_mean'], 9, 4)} "
+              f"{fmt(sp['ad_contrib_to_total_mean'], 9, 4)} "
+              f"{fmt(dv['ad_contrib_to_total_mean'], 9, 4)} | "
+              f"{fmt(sp['mean_ad_minus_fd'], 11, 6)} "
+              f"{fmt(sp['abs_diff_quantiles']['q99'], 8, 4)}")
+
+    if controls:
+        print("\n--- signature-agreement controls ---")
+        for c in controls:
+            print(f"{c['label']:>40}: same-sig {c['n_same_sig']}/{c['n_events']}"
+                  f"  median|dsteps|={c['median_abs_dsteps']:.0f}"
+                  f"  zero-dsteps={c['n_zero_dsteps']}")
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w") as fh:
-        json.dump({"window": [lo, hi], "triplets": results}, fh, indent=1)
+        json.dump({"window": [lo, hi], "triplets": results,
+                   "controls": controls}, fh, indent=1)
     print(f"\nwrote {out}")
     return 0
 
