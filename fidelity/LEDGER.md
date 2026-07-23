@@ -159,3 +159,23 @@ Protocol: `PROTOCOL.md`. Fault inventory & candidates: `RECON.md` §B/§D.
   (same residual rare-event tail, non-geometry path — the 2-seed tail is
   known heavy; defer to validation). L20 flips sign at n=2000 (noisy layer,
   off s2 = 9.4 there) — watch at validation.
+
+## Wave 3 — flag-relaxation scan, prefix-anchor ON (PLANNED)
+
+- **No new code**: binary = `knob/prefix-anchor` @ 61c7bb5, `--stopgrad-prefix-anchor 1` everywhere.
+- **Hypothesis**: the universal ~0.55 core plateau is over-severing by `-x 2`.
+  **User priors (2026-07-23)**: `-f` 0 vs 0.2 = same bias (only variance);
+  `-N`/`-C` clip tails only, no bias — so those flags are exonerated a
+  priori and dropped from the scan; `-y`/`-B` knockouts predicted null.
+- **Configs** (gap-seeded, 10 seeds × 20k, paired vs the wave-2 reference):
+  `-x 1`; `-x 0`†; `-y 0`; `-B 0`; `-x 0 -y 0 -B 0`† († = 2-seed pilot with
+  NaN/tail validity gate first). ~1M new events ≈ 52 CPU-h, timeout 10800s.
+- **Pre-registered**: (1) `-y 0`, `-B 0` → plateau unchanged within ~2σ;
+  (2) `-x 1` lifts the plateau, `-x 0` lifts further toward 1 OR fails the
+  validity pilot (a result either way); (3) decision rule: plateau reaches
+  ~0.8–1.0 at relaxed `-x` with usable variance ⇒ wave 4 = smooth damping
+  (D5); plateau stays ~0.55–0.7 even at `-x 0` ⇒ severing exonerated,
+  wave 4 = score-function race term (D4); (4) primal byte-identical (pure
+  stop-grad flags).
+- **Status**: planned; wave-2 verdict closed (rejected as fix, retained as
+  diagnostic; universal-plateau finding stands).
