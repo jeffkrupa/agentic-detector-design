@@ -315,3 +315,84 @@ it hits a variance wall. jsonl entry is the twin.)*
   verdict. hepemshow working tree restored to `phaseA-perlayer-gap-energy`;
   agent binaries `build_agent_fwd/rev` left at `knob/rng-lineage`
   (knob-off + env-off = bit-identical to the microscopy binary).
+
+## Wave 5 — analytic scoring-surface jump term (`--score-surface-term`)
+
+- **Knob**: `--score-surface-term 0/1/2/3`, branch `knob/score-surface`
+  (3 commits over `agent-knobs` @ 3ad2e97: 5b9dca4 mode 1, dc494d3 mode 2,
+  c1945ff mode 3 = final HEAD), default off, derivative-only (KeepPrimal:
+  weight `(P − stop_grad(P))·ρ`, primal exactly 0), deterministic, no RNG.
+  5 files, +158 (mode 1) then +131/−32 and +36/−11.
+- **Pre-registered prediction** (jsonl): gap core L5–18 AD/FD rises from
+  0.57 toward 1 (success > 0.75 AND closer to 1); absorber rises from 0.55;
+  primal byte-identical; fwd=rev; runtime < +15%.
+- **Implementation** (per-step, both steppers, after `Perform`):
+  ρ = (step edep)/|step Δx| (Δx = geometric stepLength·vx at move time,
+  |Δx| floored at 1e-6 mm); plane identified from the pre-step bin
+  (indxLayer, indxAbs) + sign(Δx), verified |postX − plane| ≤ 1e-6 mm
+  (rejects transverse y/z exits); plane positions and dots directly from
+  the AD-active prefix sums `Geometry::GetLayerStartX(i)` (new accessor) +
+  `fAbsThick[i]` — FULL dots incl. prefix, independent of the stop-grad
+  severing knobs. Bin mapping: layer plane x_j → combined bins (j−1 | j),
+  gap bin j−1, abs/gap totals; sub-plane x_j+a_j → gap bin j + totals only
+  (interior to the combined bin); back face x_N → one-sided escape term
+  into bin N−1; front face x_0 pinned (zero dot). Mode 2 adds
+  start-adjacency (|preX − rear face| ≤ 2e-6 mm) and applies each face
+  term one-sided to the step's own bin. Mode 3 = symmetric transfer only
+  for severed steps (gradient-disabled tracks or step-locally sanitized),
+  carried by the severed prefix anchor `fLayerStartX[i_step]`.
+- **Gates** (canonical flags + `--stopgrad-prefix-anchor 1`, final binary):
+  G1 knob-off byte-identity vs agent-knobs reference (Release build):
+  edeps + edeps_gap bit-identical (primal AND derivative), n=2000 s1 —
+  PASS. G2 primal identity knob-on: modes 1/2/3, gap+abs seeds s1–2,
+  mean_E/var_E byte-identical, derivative column changes 50/50 layers,
+  both outputs — PASS. G3 fwd=rev n=500 to all printed digits (mode 1:
+  61.8768256974; mode 2: −158082.576166; mode 3: −2.79508060118) — PASS.
+  G4 NaN scan clean — PASS. G5 runtime: mode-1 paired median 0.997,
+  mode-2 sequential probe median 1.002 — PASS (< 1.15). Refactor check:
+  mode-1 output bit-identical across the three commits.
+- **Step-6 physics check** (triplets g∓0.02 / a∓0.02, `--rng-lineage 1`,
+  gap seeds 1–4 = 8000 paired events, abs seeds 1–2 = 4000; per-event
+  paired FD, corr(E⁺,E⁻)=0.86–0.87, variance reduction 6.9–7.8×; paired-FD
+  core SE still 29% (gap) — pre-registration of "few-%" was optimistic —
+  so ratios are quoted against the 1M FD truth (±4.8%/±0.7%); summary
+  `fidelity/wave5_step6_summary.json`):
+  - knob-off (in-sample): gap core 0.481 ± 0.037, abs 0.422 ± 0.064
+    (1M values 0.566 ± 0.027 / 0.545 ± 0.010).
+  - **Mode 1 (pre-registered, all tracks): FAIL in gap** — gap core
+    AD/FD_1M = **5.50 ± 0.28** (>0.75 but far from 1); gap L49 −465 ± 26
+    vs FD −5.4 (re-inflates the L49 anomaly); gap L0–2 10.9 vs 3.5.
+    **Absorber: 0.865 ± 0.069** (from 0.55; direction prediction PASSES),
+    abs L0–2 24.7 vs 28.4.
+  - **Mode 2 (one-sided Leibniz, all tracks): decisively wrong and
+    decisive** — gap core −131 ± 8, abs −11.5 ± 0.8 (≈ −25.7k MeV/mm both
+    channels): the one-sided boundary terms are real but are cancelled by
+    an equal-and-opposite interior transport term that pathwise AD ALREADY
+    carries for live tracks (a live track's boundary-limited step-length
+    dot converts relative track/plane motion into amount changes = the
+    relabeling flux). Adding the boundary term for all tracks
+    double-counts it with the sign of the un-cancelled interior part.
+  - **Mode 3 (severed-only, prefix carrier): partial** — abs core
+    **0.780 ± 0.069** (recovers the severed relabeling mass), but gap core
+    **4.54 ± 0.24** and L49 −461 ± 26: the symmetric single-ρ estimator
+    mis-sides the discontinuous density (ρ_PbWO4 ≫ ρ_lAr) at layer planes;
+    severed backscatter crossings through the absorber side credit the
+    absorber-side density to the gap-adjacent bin.
+- **Interpretation**: the missing-jump-term picture is CONFIRMED in the
+  absorber channel (0.55 → 0.78–0.87) and the mechanism is now sharply
+  localized: (i) live tracks need NO surface term (pathwise AD already has
+  it — mode-2's −25.7k proves the cancellation), (ii) the missing mass is
+  the severed-step relabeling (mode 3 recovers it where the density is
+  smooth), (iii) the remaining gap failure is purely the side-assignment
+  of a discontinuous ρ. Next-wave candidate (both fix attempts spent):
+  mode 4 = severed-only + one-sided per-bin densities + prefix carrier —
+  the ~15-line composition of modes 2 and 3.
+- **Deviations**: physics preview failed → 2 pre-authorized fix attempts
+  used (modes 2, 3), both gated and measured; paired-FD SE 29% not few-%
+  (pairing itself performed as wave-4 predicted); reference build initially
+  missed `-DCMAKE_BUILD_TYPE=Release` (rebuilt; no science impact); knob
+  widened from 0/1 to modes 0–3.
+- **Status**: gated + step-6 measured (2026-07-23); awaiting human verdict.
+  hepemshow working tree restored to `phaseA-perlayer-gap-energy`; agent
+  binaries `build_agent_fwd/rev` left at `knob/score-surface` @ c1945ff
+  (knob-off = bit-identical to agent-knobs).
