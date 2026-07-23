@@ -223,3 +223,95 @@ it hits a variance wall. jsonl entry is the twin.)*
   working tree restored to `phaseA-perlayer-gap-energy`; agent binaries in
   `build_agent_fwd/rev` left at `knob/derivative-microscopy` (env-off =
   bit-identical to prefix-anchor).
+
+## Wave 4 — RNG lineage isolation (`--rng-lineage`)
+
+- **Knob**: `--rng-lineage 1`, branch `knob/rng-lineage` @ `3ad2e97`
+  (1 commit over `knob/derivative-microscopy` @ 887499f), default off.
+  7 files, +255/−6. Design:
+  - **Lineage key** (stable under perturbation — no step indices): primary
+    track = FNV1a64(base seed, event index); secondary = FNV1a64(parent
+    lineage, ordinal among that parent's secondaries). Bookkeeping lives in
+    `TrackStack` (lineage + per-parent ordinal maps, cleared per event);
+    assignment in `EventLoop` (primary) / `StackSecondaries` (children).
+  - **Engine strategy**: tracks are stepped contiguously (secondaries only
+    wait on the stack), so the shared mt19937_64 is re-seeded with
+    splitmix64(lineage) at each track start (`EventLoop`, after the existing
+    per-track `DiscardGauss`); no per-track engine instances or draw
+    counters needed. Knob off ⇒ bit-identical single shared stream.
+  - **Track-level dump** (for the microscopy): env
+    `HEPEMSHOW_TRACK_DUMP=<path>` (+ `HEPEMSHOW_TRACK_WINDOW=lo:hi`,
+    default 5:18) writes one 40-byte binary record per track: (eventID,
+    nsteps, lineage, decision-path sub-signature, window edep value+dot).
+    ~13k tracks/event ⇒ ~1.0 GB per 2000-event run; strictly no-op unset.
+- **Hypothesis**: with per-track streams, θ vs θ±h runs give identical
+  draws per corresponding track; divergence localizes to subtrees where a
+  discrete decision genuinely flips ⇒ (a) a nonzero same-path population
+  for pathwise AD-vs-FD matching, (b) real CRN pairing for FD.
+- **Pre-registered predictions**: knob-off byte-identity; knob-on primal
+  distribution unchanged (|z|<4 all layers at 20k — statistical gate,
+  documented PROTOCOL deviation: the knob intentionally changes individual
+  paths, so byte-identity cannot hold for the on-state); same-path fraction
+  off the floor (>0 measurable, target >50% of tracks at h≤0.02);
+  paired-FD variance reduction >>1; fwd=rev preserved.
+- **Gate results** (canonical flags + `--stopgrad-prefix-anchor 1`, gap
+  seed, s=1 unless noted):
+  - G1 knob-off byte-identity: edeps (primal AND derivative columns)
+    identical to the microscopy binary, n=2000. PASS.
+  - G2 knob-on reproducibility: same seed twice ⇒ edeps + event dump +
+    track dump all byte-identical, n=2000. PASS.
+  - G3 knob-on distributional physics gate, n=20000 knob-on vs knob-off:
+    per-layer mean_E z-scores (SE from var_E/n): max|z| = 1.00 (L49),
+    mean z = +0.044, 0/50 layers with |z|>2 (gate bound was |z|<4);
+    total mean_E 9291.5 (on) vs 9299.0 (off), diff −7.5 MeV = −0.48σ
+    (−0.08%). No systematic shift. PASS (documented PROTOCOL deviation:
+    statistical gate replaces byte-identity for the on-state, since the
+    knob intentionally changes individual paths while preserving the
+    distribution).
+  - G4 fwd=rev: knob on, n=500: Σ fwd mean_dE = −67.194850372309 vs
+    reverse barInputs gap row −67.194850372402 (rel 1.4e−12). PASS.
+  - G5 NaN scan: all gate + acceptance edeps finite. PASS.
+  - Consistency: per-event window sums of the track dump reproduce the
+    event dump to 1e−10; per-event track counts match; 0 duplicate
+    lineages in 25.6M tracks; runtime knob-on+dumps 401 s vs knob-off
+    365 s (n=2000, same host/load) ⇒ ≤10% overhead.
+- **Acceptance experiment** (wave-3 microscopy retried, knob on; triplets
+  (g−h, g, g+h), seeds 1–2, h ∈ {0.05, 0.02}, n=2000/run, window L5–18;
+  summary `fidelity/wave4_microscopy_summary.json`, analysis
+  `fidelity/wave4_microscopy.py`):
+  - **Event-level same-path: still 0/2000 at every (seed, h).** With
+    ~12.8k tracks/event, one flipped track anywhere diverges the event
+    signature; the event-level floor is a combinatorial consequence, not a
+    knob failure.
+  - **Track-level same-path comes off the floor** (was structurally 0):
+    matched (present in all 3 runs, identical sub-signature) = 6.3%/6.2%
+    of center tracks at h=0.05 and 14.0%/13.9% at h=0.02 (seeds 1/2);
+    common-lineage (existence) fractions 22%/33%. The >50% target was
+    missed — flips propagate to entire descendant subtrees, and most
+    tracks are deep in the cascade.
+  - **Matched-population pathwise AD is exact**: per-track AD − central FD
+    = +0.00035±0.00026 / +0.00025±0.00032 / −0.00008±0.00026 /
+    +0.00039±0.00032 MeV/mm (4 triplets — consistent with 0 at 3e−4);
+    signal-carrying matched tracks (~0.5–1.0M per triplet) have median
+    |AD−FD| = 1e−6; all matched tracks have identical step counts across
+    the triplet. Window-sum decomposition closes exactly.
+  - **Deficit decomposition (core L5–18)**: matched tracks carry 0.09–0.9%
+    of the FD mass (FD_matched 0.18–2.6 of FD_total 211–622 MeV/mm);
+    ≥99% of the FD signal — and hence the knob-on core deficit
+    (AD/FD≈0.57 at 1M events) — flows through path-flipped subtrees, now
+    *measured* at track granularity rather than inferred (wave 3).
+  - **CRN pairing now works**: per-event paired-FD variance reduction vs
+    unpaired = 5.6×/5.2× at h=0.05 and 7.6×/7.8× at h=0.02 (seeds 1/2);
+    corr(E⁺,E⁻) = 0.82–0.87 (knob-off measured 1.16×, i.e. useless).
+    Equivalent to ~6–8× fewer events for the same FD error at fixed h.
+- **Interpretation**: the knob does exactly what it was built to do —
+  isolates RNG lineage so divergence is local, creates the first nonzero
+  same-path population, and proves pathwise AD is *numerically exact* on
+  it. The remaining core deficit is therefore entirely a missing
+  branch-flip (score-function/surface) term, not a severed derivative
+  line: direct, track-level evidence for the RECON D3/D4 routes. Bonus:
+  the CRN factor makes future FD truth batches ~6–8× cheaper at fixed h.
+- **Status**: gated + acceptance complete (2026-07-23); awaiting human
+  verdict. hepemshow working tree restored to `phaseA-perlayer-gap-energy`;
+  agent binaries `build_agent_fwd/rev` left at `knob/rng-lineage`
+  (knob-off + env-off = bit-identical to the microscopy binary).
