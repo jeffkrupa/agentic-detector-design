@@ -1,0 +1,105 @@
+# HTCondor submit file for the wave-9 knob validation (fidelity loop).
+#
+# One job per (config, seed): 60 jobs x 20000 events (1.2M events total,
+# ~62 CPU-h). gap_b80_val s1-10, abs_unsevered_mean s1-20, gap_b80_od s1-10,
+# gap_fd_od_plus/minus s1-10 each. The runner appends its per-unit JSONL
+# directly to EOS (fidelity/wave9val_runs/<config>_s<seed>.jsonl); EOS writes
+# need the kerberos credential (MY.SendCredential). Condor log/out/err live
+# on AFS (EOS-hosted condor logs are unreliable).
+#
+# NOTE (CERN gotcha): standard batch schedds REJECT any /eos path in the
+# submit context, so submit from an AFS cwd and keep the executable on AFS.
+# The wrapper cd's into the EOS repo at runtime on the worker.
+#
+# Submit:
+#   cd /afs/cern.ch/user/j/jekrupa/condor_bin
+#   condor_submit /eos/user/j/jeffkrup/agentic/agentic-detector-design/condor/wave9_validation.sub
+universe   = vanilla
+executable = /afs/cern.ch/user/j/jekrupa/condor_bin/run_wave9_validation.sh
+
+arguments  = --config $(CONFIG) --seed $(SEED) --n-events 20000
+
+# Forward the kerberos credential so the worker can write to EOS.
+MY.SendCredential = true
+
+TAG = wave9_validation
+log    = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).log
+output = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).out
+error  = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).err
+
+# Outputs go directly to EOS; no condor file transfer. The per-event dump
+# (HEPEMSHOW_EVENT_DUMP, ~35 MB for AD configs) goes to the job-local tmp
+# and is reduced to a small npz before the job ends.
+should_transfer_files = NO
+
+# Single-threaded forward-sim job; ~1-1.6 h of sim per unit at baseline speed.
+request_cpus   = 1
+request_memory = 2GB
+request_disk   = 2GB
+
+# "workday" = 8 h max walltime; the in-process sim timeout is 10800 s,
+# leaving ample margin for slow nodes + EOS latency.
++JobFlavour = "workday"
+
+queue CONFIG,SEED from (
+gap_b80_val, 1
+gap_b80_val, 2
+gap_b80_val, 3
+gap_b80_val, 4
+gap_b80_val, 5
+gap_b80_val, 6
+gap_b80_val, 7
+gap_b80_val, 8
+gap_b80_val, 9
+gap_b80_val, 10
+abs_unsevered_mean, 1
+abs_unsevered_mean, 2
+abs_unsevered_mean, 3
+abs_unsevered_mean, 4
+abs_unsevered_mean, 5
+abs_unsevered_mean, 6
+abs_unsevered_mean, 7
+abs_unsevered_mean, 8
+abs_unsevered_mean, 9
+abs_unsevered_mean, 10
+abs_unsevered_mean, 11
+abs_unsevered_mean, 12
+abs_unsevered_mean, 13
+abs_unsevered_mean, 14
+abs_unsevered_mean, 15
+abs_unsevered_mean, 16
+abs_unsevered_mean, 17
+abs_unsevered_mean, 18
+abs_unsevered_mean, 19
+abs_unsevered_mean, 20
+gap_b80_od, 1
+gap_b80_od, 2
+gap_b80_od, 3
+gap_b80_od, 4
+gap_b80_od, 5
+gap_b80_od, 6
+gap_b80_od, 7
+gap_b80_od, 8
+gap_b80_od, 9
+gap_b80_od, 10
+gap_fd_od_plus, 1
+gap_fd_od_plus, 2
+gap_fd_od_plus, 3
+gap_fd_od_plus, 4
+gap_fd_od_plus, 5
+gap_fd_od_plus, 6
+gap_fd_od_plus, 7
+gap_fd_od_plus, 8
+gap_fd_od_plus, 9
+gap_fd_od_plus, 10
+gap_fd_od_minus, 1
+gap_fd_od_minus, 2
+gap_fd_od_minus, 3
+gap_fd_od_minus, 4
+gap_fd_od_minus, 5
+gap_fd_od_minus, 6
+gap_fd_od_minus, 7
+gap_fd_od_minus, 8
+gap_fd_od_minus, 9
+gap_fd_od_minus, 10
+)
