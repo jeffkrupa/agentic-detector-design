@@ -1,0 +1,123 @@
+{
+ "wave": 7,
+ "binary": {
+  "mode1": "30967d6",
+  "mode2_final": "7ebab9e",
+  "base": "79f7383"
+ },
+ "flags": {
+  "canonical": "-x 2 -y 1 -B 1 -f 0.2 -N 1e-3 -C 1000",
+  "stack_m3": "--stopgrad-prefix-anchor 1 --rng-lineage 1 --score-surface-term 3",
+  "mode1": "--race-score-term 1 (q=0.025, thresh=50, cap=64)",
+  "mode2": "--race-score-term 2 --race-score-q 0.0125 (thresh=50, cap=64)"
+ },
+ "n_events_per_run": 2000,
+ "truth_1M": {
+  "gap_core": [
+   195.78,
+   9.36
+  ],
+  "abs_core": [
+   2233.68,
+   14.75
+  ],
+  "gap_L49": -5.395,
+  "abs_L49": -63.736,
+  "gap_L0_2": 3.528,
+  "abs_L0_2": 28.35
+ },
+ "gates": {
+  "G1_knoboff_byte_identity_fwd": "PASS (edeps+edeps_gap identical to 79f7383 build, n=2000 s1 gap, m3 stack; re-verified n=500 after mode-2 commit)",
+  "G1_knoboff_byte_identity_rev": "PASS (barInputs+edeps identical to 79f7383 reverse build, n=500 s1 gap, m3 stack, -b 1:...:1)",
+  "G2_primal_identity_knob_on": "PASS - mean_E/var_E byte-identical vs knob-off: mode 1 gap s1-2 + abs s1-2 + qhalf; mode 2 gap s1-2 + abs s1 + nom3 s1; derivative column changed 50/50 layers in every run (CRITICAL GATE: 22k-128k phantom rollouts/run leak zero draws into the primal stream)",
+  "G3_fwd_eq_rev": "DEVIATION (pre-authorized): forward-only v1; reverse build rejects --race-score-term with a clear error; reverse knob-off regression byte-identical",
+  "G4_nan_scan": "PASS (all edeps/edeps_gap columns finite, all runs)",
+  "G5_runtime_ratio": {
+   "mode1_gap": 2.0064186386580616,
+   "mode2_gap": 2.05575474660555,
+   "mode1_abs": 2.1651273439686536,
+   "note": "pre-registered <2x: gap 2.01/2.06 marginally above; abs worse (cap-saturated: 3.3x mode 2)"
+  },
+  "mode1_regression_after_mode2_commit": "PASS (mode-1 gap s1 outputs bit-identical across 30967d6 -> 7ebab9e)"
+ },
+ "mode1_realized_continuation": {
+  "gap_core_ratio_1M": {
+   "off_m3": [
+    4.5403917313889375,
+    0.21717852931382398
+   ],
+   "on": [
+    7.559353834558843,
+    0.5256164388719615
+   ]
+  },
+  "abs_core_ratio_1M": {
+   "off_m3": [
+    0.780094194771643,
+    0.05808078466579013
+   ],
+   "on": [
+    5.876209179949061,
+    0.8818395132759654
+   ],
+   "note": "abs cap-saturated 1999-2000/2000 events"
+  },
+  "race_only_on_prefix_anchor_gap": [
+   3.5792682335245014,
+   0.25098588331623034
+  ],
+  "L49_gap_on": [
+   -507.06782958658505,
+   146.47963725932755
+  ],
+  "L02_gap_on": [
+   8.760368909535558,
+   4.594653077085696
+  ],
+  "q_sensitivity_s1_core_AD": {
+   "q0.025": 1450.3409264263557,
+   "q0.0125": 1312.958882402073
+  },
+  "var_dE_ratio_on_off": {
+   "gap_core": 7.2682693887007055,
+   "gap_tail": 12.420894173757349,
+   "abs_core": 32.2033312303286,
+   "abs_tail": 6.5309840440530715
+  },
+  "phantom_stats_gap": "~44k selected/2000 ev (22/ev), sat 0, truncated 0; abs ~64/ev (cap)",
+  "verdict": "FAIL - large positive bias both channels (gap 4.54->7.56+-0.53, abs 0.78->5.88+-0.88, race-only 0.57->3.58+-0.25): realized-continuation payoff double-counts interaction-position mass already carried pathwise via numIALeft decrement dots"
+ },
+ "mode2_paired_threshold": {
+  "gap_core_ratio_1M_s1_3": [
+   4.498667462722888,
+   0.22000643901321118
+  ],
+  "abs_core_ratio_1M_s1": [
+   0.7986281089821748,
+   0.005273702861415727
+  ],
+  "race2_only_gap_s1_ratio_1M": [
+   0.3991802841864317,
+   0.01908431637544693
+  ],
+  "race_term_core_delta_MeV_per_mm": {
+   "gap_s1": -23.887096415576934,
+   "gap_s2": -6.311252314118292,
+   "abs_s1": -87.82378242027903
+  },
+  "var_dE_ratio_on_off": {
+   "gap_core": 1.5896585685839075,
+   "gap_tail": 22.572946872780527,
+   "abs_core": 4.7787264847035615
+  },
+  "phantom_stats": "22k selected/2000 ev x2 branches, sat 0 (gap); abs sat 1467/2000",
+  "verdict": "race branch-flip term measured ~ null: gap core delta -15+-9 MeV/mm (-0.08+-0.05 in ratio units of 195.8), abs -88 of 2234 (-0.04); abs stays 0.799 ~ 0.78"
+ },
+ "interpretation": "The exact threshold estimator (paired phantoms at the marginal state, CRN-shared lineage) measures the boundary-vs-physics race branch-flip mass as consistent with zero in both channels. Physics: numIALeft PERSISTS across boundaries, so at the race threshold the two branches nearly coincide (interaction just inside vs just past the plane with ~zero residual budget) - E[F] is continuous there up to the cross-material product difference; the interaction-position sensitivity is already pathwise (numIALeft decrement dots). The wave-7 hypothesis that this decision class carries the residual gap error is FALSIFIED (measured null). Mode-1's +560 MeV/mm/seed quantifies the double-count bias of realized-continuation payoffs.",
+ "deviations": [
+  "forward-only v1 (pre-authorized)",
+  "runtime 2.01-2.06x vs pre-registered <2x (marginal); abs channel cap-saturated at thresh=50 (S=f*|mdot|*EKin passes 5.6k/ev for abs seeds)",
+  "FD side legs not rerun (prior-wave scratch runs deleted); ratios quoted vs the pre-registered 1M FD truth",
+  "fix attempt 1 = mode 2 (spent, gated, measured); fix attempt 2 declined - the estimator is exact and the null is the measurement"
+ ]
+}

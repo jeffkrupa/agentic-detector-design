@@ -480,3 +480,171 @@ it hits a variance wall. jsonl entry is the twin.)*
   `phaseA-perlayer-gap-energy`; agent binaries `build_agent_fwd/rev` left at
   `knob/score-surface` @ 79f7383 (knob-off = bit-identical to agent-knobs;
   modes 0–3 bit-identical to c1945ff).
+
+## Wave 7 — phantom-subtree score-function race term (`--race-score-term`)
+
+- **Knob**: `--race-score-term 0/1` (+ `--race-score-q <p>`,
+  `--race-score-thresh <S>`, `--race-score-cap <n≤64>`), branch
+  `knob/race-score` cut from `knob/score-surface` @ 79f7383, default off,
+  derivative-only (KeepPrimal carrier), **forward-mode-only v1**
+  (pre-authorized deviation; reverse build rejects the flag with a clear
+  error). Requires `--rng-lineage 1` at runtime (hard error otherwise):
+  phantom rollouts run at end-of-event on the shared engine, and per-track
+  lineage reseeding is what guarantees they cannot perturb any primal draw.
+- **Hypothesis / predictions**: pre-registered in `ledger.jsonl` (wave 7,
+  written before implementation): gap core L5–18 AD/FD_1M reaches
+  [0.75, 1.35] on the accepted stack; absorber stays within errors of 0.78;
+  primal byte-identical knob-on (critical gate); runtime < 2×; fwd=rev or
+  documented forward-only.
+- **Derivation** (written before implementation; the wave-7 physics):
+  At each step the sim races the physics step limit against the boundary:
+  `distToPhysics < distToBoundary` (SteppingLoop.cc:1156 gamma, :1556
+  electron; original RECON refs :712/:1092). The winner channel w carries a
+  remaining interaction budget n_w = numIALeft[w], sampled once as
+  −log(U) (zero dot) and decremented by pStep/λ each step
+  (GammaManager.icc:104–145/190–197, ElectronManager.icc:397–452/570–578),
+  so the proposed interaction distance x_p = λ_w·n_w (gamma; MSC
+  geometric conversion for e∓) is **pathwise** with dot
+  ẋ_p = GET_DOTVALUE(distToPhysics) (numIALeft-decrement dots + mfp dots,
+  `-C`-regularized). The boundary distance d_b = distToBoundary has dot
+  ḋ_b (consistent with the accepted severing stack: sanitized tracks carry
+  severed/re-anchored dots). The discrete outcome is 1{x_p < d_b} with
+  margin m = d_b − x_p; with the exponential draw held fixed
+  (reparameterized) the outcome flips exactly when m crosses 0.
+  By memorylessness of the exponential budget, conditional on the track
+  history at step start, the residual n_w ~ Exp(1), so the conditional
+  density of x_p at the threshold d_b is f = (1/λ_w)·e^{−d_b/λ_w}
+  (electron with true↔geom conversion: f = (r/λ_w)·e^{−r·d_b/λ_w} with
+  local secant Jacobian r = pStepLength_true/gStep ≥ 1 — documented v1
+  approximation). The missing expectation-level term per decision (law of
+  total expectation over the per-step filtration) is
+      dE[F]/dθ ⊇ f · ṁ · (F_int@bnd − F_transport@bnd),  ṁ = ḋ_b − ẋ_p.
+  **Sign conventions**: ṁ > 0 means the boundary recedes from the pending
+  interaction point (physics-win region grows); the payoff difference is
+  always oriented interaction-at-boundary MINUS transport-through-boundary.
+  With the realized continuation as F_cur and a phantom rollout of the
+  alternative as F_alt: contribution = s·f·ṁ·(F_phantom − F_real) with
+  s = +1 for realized boundary-won steps (phantom = interaction at the
+  boundary) and s = −1 for realized physics-won steps (phantom = transport
+  through the boundary). Multi-channel: the outcome flips through channel w
+  only when every other channel's proposed distance exceeds d_b (explicit
+  guard; automatic for boundary-won steps) — winner-channel-only density is
+  a documented v1 underestimate of the total-Σ flip density.
+  **Threshold states via numIALeft forcing**: cloning the pre-step track
+  and setting numIALeft[w] ← (d_b/λ_w)·(1∓1e−9) forces interaction just
+  inside the near face (physics branch) or transport with ~zero residual
+  budget — which then interacts just past the plane, exactly the marginal
+  transport event (electron: r·d_b/λ_w). Known v1 biases (documented):
+  (i) F_real is the realized continuation, not the threshold-conditioned
+  branch payoff (realized transport crosses with Exp(1) residual budget,
+  the marginal one with ~0) — standard one-sample bias of pruning-based
+  stochastic-AD estimators; (ii) electron races won by continuous/MSC
+  limits are skipped (no discrete margin); (iii) the selection threshold on
+  S = f·|ṁ|·EKin drops small-payoff decisions.
+- **Design** (pre-registered):
+  - Phantom lineage: FNV(FNV(track_lineage, 'PHAN'), decision_ordinal);
+    phantom secondaries get the standard HashLineage(parent, ordinal) chain
+    from a dedicated phantom TrackStack. Selection randomness is a
+    counter-based hash u = SplitMix64(FNV(FNV(track_lineage, 'RACE'),
+    per-track candidate ordinal))/2^64 — **no draws from the primal
+    stream** anywhere; rollouts run after the event's last primal track,
+    and every primal track reseeds by lineage, so primal draws are
+    structurally unreachable (the critical gate 2 tests this).
+  - Subtree accounting: decision d ∈ [0,64) = one bit in a per-track
+    uint64 race mask (TrackStack map + a current-track global); set on the
+    deciding track from the decision step onward, inherited by secondaries
+    at stacking; SteppingAction adds each deposit VALUE to E_real[d][layer]
+    (combined + gap) for every set bit. The phantom rollout (gPhantomMode)
+    redirects deposits to E_phantom[d][layer] and touches no primal
+    accumulator, dump, or surface-term path.
+  - Contribution at end of event, before EndOfEventAction:
+    per layer, Fill(L, (m − stop_grad(m)) · s·f/q · (E_ph − E_re)) — primal
+    exactly 0 (KeepPrimal), dot = s·f·ṁ·ΔE/q; gap/abs event totals
+    consistently updated.
+  - Cost control: candidate iff winner ∈ {0,1,2}, other-channel guard, and
+    S = f·|ṁ|·EKin > thresh (default calibrated on a probe run); accepted
+    with probability q (default 0.05), reweighted 1/q; ≤ cap (default 64)
+    rollouts/event; per-rollout step budget with truncation counting;
+    saturation statistics reported per run.
+- **Implementation**: branch `knob/race-score`, 2 commits over 79f7383:
+  30967d6 (mode 1) + 7ebab9e (mode 2 = fix attempt 1). 6 files, ~+420
+  lines: `--race-score-term 0/1/2`, `--race-score-q/-thresh/-cap`
+  (InputParameters ids 1011–1014); race-mask map in TrackStack; decision
+  recording + phantom-mode guards + end-of-event rollout loop + KeepPrimal
+  contribution in SteppingLoop.cc; per-event reset / finalize / stats hooks
+  in EventLoop; rng-lineage requirement + forward-only rejection in main.
+  Defaults calibrated on probes: thresh = 50 MeV/mm, q = 0.025 (mode 1;
+  22 selected/event on gap seeds, saturation 0), cap = 64.
+  **Mode 2 (fix attempt 1, motivated by the measured mode-1 bias)**: both
+  branch payoffs rolled AT the threshold state — interaction at the
+  boundary (numIALeft[w] ← thr·(1−1e−9)) vs transport with ~zero residual
+  (thr·(1+1e−9)) — CRN-paired by a SHARED phantom lineage; contribution
+  = f·ṁ·(E_int@bnd − E_transport@bnd)/q, no realized-branch sign.
+- **Gate results** (canonical flags + m3 stack `--stopgrad-prefix-anchor 1
+  --rng-lineage 1 --score-surface-term 3`, n=2000 unless noted):
+  - G1 knob-off byte-identity: fwd edeps+edeps_gap identical to a fresh
+    79f7383 Release build (gap s1; re-verified n=500 after the mode-2
+    commit); reverse barInputs+edeps identical (n=500, `-b 1:…:1`). PASS.
+  - G2 primal identity knob-on (**the critical gate**): mean_E/var_E
+    byte-identical vs knob-off in every knob-on run — mode 1 gap s1–2,
+    abs s1–2, q/2; mode 2 gap s1–3, abs s1, no-m3 s1 — while running
+    22k–128k phantom rollouts per run (25M+ phantom tracks): zero draws
+    leak into the primal stream. Derivative column changes 50/50 layers.
+    PASS.
+  - G3 fwd=rev: pre-authorized deviation — **forward-only v1** (reverse
+    build rejects the flag with a clear error; phantom rollouts are not
+    taped). Reverse knob-off regression byte-identical.
+  - G4 NaN scan: all runs finite. PASS.
+  - G5 runtime: mode 1 gap 2.01× (q=0.025), mode 2 gap 2.06× (q=0.0125,
+    2 rollouts/decision); abs channel 2.2×/3.3× with cap saturation
+    (thresh=50 passes 5.6k candidates/event on abs seeds). Marginally
+    above the pre-registered <2×.
+  - Mode-1 regression across the mode-2 commit: bit-identical. PASS.
+- **Preview** (center runs n=2000, ratios vs the pre-registered 1M FD
+  truth gap 195.8 ± 9.4 / abs 2233.7 ± 14.8; FD side legs not rerun —
+  prior-wave scratch runs deleted; summary
+  `fidelity/wave7_preview_summary.json`):
+  - **Mode 1 (pre-registered estimator): decisive FAIL, both channels** —
+    gap core (s1–4) AD/FD_1M = **7.56 ± 0.53** (from m3's 4.54 ± 0.22);
+    abs (s1–2, cap-saturated 2000/2000 events) = **5.88 ± 0.88** (from
+    0.78); race-only on prefix-anchor (s1–2) = **3.58 ± 0.25** (from
+    0.57). The term ADDS ≈ +560 MeV/mm/seed to the gap core in either
+    stack. q-sensitivity s1: core AD 1450 (q=0.025) vs 1313 (q=0.0125).
+    var_dE on/off: gap core ×7.3, gap tail ×12.4, abs core ×32.
+  - **Mode 2 (paired-threshold, exact): the race branch-flip term is a
+    measured NULL** — gap core (s1–3) = **4.499 ± 0.220** vs off
+    4.540 ± 0.217 (per-seed race-term delta −23.9 / −6.3 / — MeV/mm of
+    ~888); abs s1 = **0.799** vs off 0.780 (within errors — the abs
+    prediction PASSES trivially because the term ≈ 0); race2-only on
+    prefix-anchor s1 = 0.399 vs knob-off in-sample ~0.48. var_dE on/off:
+    gap core ×1.6, gap tail ×22.6, abs core ×4.8.
+- **Interpretation — the wave-7 hypothesis is FALSIFIED by the exact
+  estimator**: numIALeft PERSISTS across boundaries, so at the race
+  threshold the two branches nearly coincide (interaction just inside the
+  plane vs transport that crosses with ~zero residual budget and interacts
+  just past it) — E[F] is continuous there up to the cross-material
+  product difference, and the interaction-position sensitivity is already
+  carried pathwise by the numIALeft decrement dots. The paired-threshold
+  measurement (CRN-shared lineages make the two branches differ only by
+  the genuine jump) puts the boundary-vs-physics branch-flip mass at
+  −0.08 ± 0.05 (gap, ratio units) and −0.04 (abs): this decision class
+  does NOT carry the residual gap error. Mode-1's +560 MeV/mm/seed is the
+  quantified double-count bias of realized-continuation payoffs (the
+  spec's pre-registered v1 approximation) — a methods result in itself:
+  phantom estimators here MUST price both branches at the threshold.
+- **Deviations**: forward-only v1 (pre-authorized); runtime 2.01–2.06×
+  vs pre-registered <2× (marginal, reported); abs channel cap-saturated
+  at thresh=50 (abs-seed ṁ dots are ~10× larger — a per-seed threshold
+  would be needed); FD side legs not rerun (1M truth is the pre-registered
+  denominator); fix attempt 1 = mode 2 (spent, gated, measured); fix
+  attempt 2 declined — the estimator is exact and the null is the
+  measurement, not an estimator defect.
+- **Status**: gated + preview measured (2026-07-24) — mode 1 FAIL
+  (biased estimator, kept as measured branch commits), mode 2 = measured
+  null vs the pre-registered gap bar; awaiting human verdict (recommend:
+  reject as a gap fix, record as the decisive falsification of RECON D4's
+  boundary-race route — the residual gap inflation must live in another
+  mechanism class, e.g. the m3 carrier itself or the winner-reset /
+  secondary-kinematics severed lines). hepemshow working tree restored to
+  `phaseA-perlayer-gap-energy`; agent binaries `build_agent_fwd/rev` left
+  at `knob/race-score` @ 7ebab9e (knob-off = bit-identical to 79f7383).
