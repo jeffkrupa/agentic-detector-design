@@ -1,0 +1,72 @@
+{
+ "description": "Wave 8 part C: single-event step-level dissection of the top gap dipole and top absorber |W| spike (unsevered -x0 -y0 -B0, shared RNG stream). Env-gated step telemetry (HEPEMSHOW_STEP_DUMP + HEPEMSHOW_DUMP_EVENT) added on worktree branch knob/step-telemetry (from knob/race-score 7ebab9e); byte-identity gate passed (n=2000 edeps_1/edeps_gap_1/dump.txt identical to the 7ebab9e reference run when env unset).",
+ "date": "2026-07-24",
+ "binary": "/eos/user/j/jeffkrup/agentic/hepemshow-diag/build_diag_fwd/HepEmShow @ knob/step-telemetry",
+ "replay_verification": "both replayed events' per-event dump rows (50 primal edeps + 50 dots + signature) byte-identical to part-A wave8_runs rows",
+ "gap_event": {
+  "seed": 1, "event": 529, "seed_arg": "gap (-g 5.7:1)", "n_replay": 530,
+  "dipole": {"left_layer": 32, "boundary": "L32-gap | L33-abs interface (x = layerStart[33], plane_dot = 33)",
+             "D32_track": -207869387.2, "D33_track": 207869387.4},
+  "carrier_track": {"id": 10489, "ptype": "e-", "parent": "gamma 10487", "birth_ekin_MeV": 0.24406,
+                    "birth_ekin_dot": 0.20027, "birth_x_dot": 239.77, "n_steps": 88},
+  "energy_conservation_check": "sum of track 10489 per-layer edep dots = +0.2003 = birth ekin_dot exactly (relative residual ~1e-9); the dipole is pure bin relabeling of a fixed energy",
+  "single_track_dominance": "of 12111 tracks in the event, only 17 ever exceed |edep_dot|>2e3 and only the carrier exceeds 1e5 (next largest 9.7e4)",
+  "amplification_cycles": [
+   {"crossing_step": 10, "vx": 0.903, "preX_dot": 2663, "stepLen_dot": -2903, "ekin_dot_after": 138},
+   {"crossing_step": 22, "vx": 0.225, "preX_dot": 1654, "stepLen_dot": -10160, "ekin_dot_after": 1659, "gain": "x12"},
+   {"crossing_step": 49, "vx": 0.391, "preX_dot": 364000, "stepLen_dot": -974700, "ekin_dot_after": 375100, "gain": "x226"},
+   {"crossing_step": 70, "vx": 0.823, "preX_dot": 182400000, "stepLen_dot": -224600000, "ekin_dot_after": 209300000, "gain": "x557"}
+  ],
+  "top5_steps_by_edep_dot": [
+   {"step": 87, "layer": 33, "region": "abs", "edep_dot": 337900000, "mechanism": "range-out full-deposit branch dumps the accumulated ekin_dot (ElectronManager ApplyMeanEnergyLoss full-deposit)"},
+   {"step": 70, "layer": 32, "region": "gap", "edep_dot": -209000000, "mechanism": "boundary-limited crossing: eloss = dEdx x stepLen, stepLen_dot = (plane_dot - preX_dot)/vx = -2.25e8 (S2 numerator; vx=0.82, NOT grazing)"},
+   {"step": 85, "layer": 33, "region": "abs", "edep_dot": -42800000, "mechanism": "energy-loss fluctuation sampling dots proportional to ekin_dot (recycles Ekin_dot up before range-out)"},
+   {"step": 84, "layer": 33, "region": "abs", "edep_dot": -26760000, "mechanism": "same fluctuation recycling"},
+   {"step": 86, "layer": 33, "region": "abs", "edep_dot": -21250000, "mechanism": "same fluctuation recycling"}
+  ]
+ },
+ "absorber_event": {
+  "seed": 1, "event": 91, "seed_arg": "abs (-a 2.3:1)", "n_replay": 92,
+  "W": -3617500, "dipole": {"left_layer": 18, "boundary": "L18-gap | L19-abs interface (x = layerStart[19], plane_dot = 19)",
+             "D18_track": -3618552.5, "D19_track": 3616510.9},
+  "carrier_track": {"id": 3291, "ptype": "e-", "parent": "gamma 3285", "birth_ekin_MeV": 0.35472,
+                    "birth_ekin_dot": -2042, "birth_x_dot": -123700, "n_steps": 32},
+  "energy_conservation_check": "sum of track 3291 per-layer edep dots = -2042 = birth ekin_dot exactly",
+  "mechanism": "SAME loop as the gap event (audit's 'expect S1 for absorber' prediction falsified). Multi-generation seeding: e+ 3262 (born x_dot 0.0245, healthy) ran ~1.5 cycles of the same loop at the same L18|L19 interface (x_dot to 2.2e4); its brems gamma 3285 was born with x_dot 4.3e3 and direction dot ~ -2.6e4 inherited through emission kinematics; after a 5 mm flight the secondary e- 3291 was born with x_dot -1.24e5; two crossings (steps 2 and 12) multiplied ekin_dot to 2.5e5 then 3.87e6; range-out at step 31 deposited +4.1e6 in L19-abs",
+  "key_steps": [
+   {"step": 2, "crossing": true, "vx": -0.496, "preX_dot": -123800, "stepLen_dot": -250000, "ekin_dot_after": 251000, "edep_dot": -252847},
+   {"step": 12, "crossing": true, "vx": 0.662, "preX_dot": 14410000, "stepLen_dot": -21780000, "ekin_dot_after": 3869000, "edep_dot": -3660000, "note": "the L18 pole"},
+   {"step": 31, "range_out": true, "edep_dot": 4100000, "note": "the L19 pole"}
+  ]
+ },
+ "mechanism": {
+  "name": "boundary-relabeling dipole loop: S2-numerator x energy-conservation x MSC re-injection (S4 compounding with THREE state carriers)",
+  "loop": [
+   "1. S2 numerator (Box.cc DistanceToOut t=(copysign(hD,v)-p)/v via Geometry::CalculateDistanceToOut): at a boundary-limited crossing, stepLen_dot = (plane_dot - x_dot)/vx. The amplitude is the ACCUMULATED position dot in the numerator, not 1/vx: measured crossing vx = 0.23-0.90, never below the 0.2 grazing class; 1/vx contributed <= 5x total while the numerator carried up to 1.8e8",
+   "2. energy transfer (ElectronManager ApplyMeanEnergyLoss, eloss = pStepLength*dEdx): the crossing's eloss_dot = dEdx x stepLen_dot is scored in the CURRENT bin (one pole) and, by Ekin -= eloss, flips sign into ekin_dot (the carrier of the other pole)",
+   "3. MSC re-injection (UMSC SampleCosineTheta / RotateToReferenceFrame / SampleDisplacement, S5/S6/S7 class): angle Jacobians convert pStepLength_dot and ekin_dot into direction dots (measured vx_dot: 0.9 -> 3.0e4 in ONE scattering at gap step 0, gain ~63 per unit pSL_dot; up to 1.3e10 late); each subsequent step rebuilds the position dot via x_dot += stepLen*vx_dot (~1.7e7/step measured, ~80% of growth) plus displacement dots (~20%), all proportional to ekin_dot",
+   "4. scoring (SteppingAction, discrete (indxLayer, indxAbsorber) bins): the crossing pole lands in the pre-step bin; the compensating pole lands at range-out (full-deposit branch dumps the whole accumulated ekin_dot into the last bin). Sum over the track = birth ekin_dot (small): pure relabeling"
+  ],
+  "per_cycle_gain": "x12 -> x226 -> x557 (gap event); gain ~ n_steps x (MSC coefficient ~50 mm/MeV) x dEdx / vx, grows as EKin falls (30-250 keV electrons)",
+  "S1_verdict": "the electron mfp x numIA product NEVER set the step limit on any amplifier step in either event (all winner=-2 continuous/MSC-limited; numIA dots grew to 4.9e5 but never landed in a stepLen). Gamma-side S8 injections were seed-scale only (<= ~1e4 with -C 1000 active).",
+  "grazing_verdict": "no grazing needed: the top spikes are numerator-driven; -f/-y/-B target the wrong variable (and partial severing creates the worse zombie population, per part A)"
+ },
+ "cap_counterfactuals": {
+  "proposal_1_el_mfp_cap": {"neutralizes_these_events": false, "reason": "no amplifier step was mfp*numIA-limited; the binding carrier is position/direction/energy dots, not the electron discrete-channel step limit"},
+  "proposal_2_track_dot_cap": {"neutralizes_these_events": true, "cap_pos_mm_per_seed": 250,
+   "gap_event": "x_dot first exceeds 250 at step 14 (335); clamped, worst crossing stepLen_dot <= (250+33)/0.225 ~ 1.3e3, pole <= ~2e3 MeV/mm vs 2.1e8 (5 orders down)",
+   "abs_event": "birth x_dot -1.24e5 clamped to 250 immediately; pole <= ~2.3e2 vs 3.7e6",
+   "residual_caveat": "as spec'd it caps position+numIA only; ekin_dot and direction dots stay uncapped. In both events they are fed exclusively through the (now clamped) crossing stepLen_dot, so the loop is broken anyway; adding cap_ekin ~ 1e2 MeV/seed would close the carrier explicitly"},
+  "proposal_3_boundary_dot_cap": {"neutralizes_these_events": true, "cap_mm_per_seed": 40,
+   "gap_event": "crossing sL_dot -2.25e8 -> -40; pole <= (edep/sL ratio 1.58) x 40 ~ 63 MeV/mm (below the ~200 physical scale); ekin_dot jump per crossing <= dEdx x 40, so the loop gain collapses",
+   "abs_event": "crossing sL_dot -2.18e7 -> -40; pole ~ 2e1; range-out residual bounded by sum of capped crossing elosses",
+   "residual": "leaves gamma S8 seed injections (~1e4) and inherited direction dots uncapped; position dots can still reach ~1e4-1e5 transiently but cannot compound without the crossing multiplier, and the scored poles are directly capped",
+   "preferred": "caps the net Box distance dot (no cancellation-pair breakage) and directly targets the measured generator; per part A the dipoles cancel to <=1.4e-2 relative in the 50-layer sum, so the total-detector derivative is provably untouched"},
+  "verdict": "proposal 3 at 40 mm/seed (or proposal 2 at 250 mm/seed) individually neutralizes BOTH dissected events; proposal 1 does not. Recommend proposal 3 first for the wave-9 knob, optionally + an ekin-dot cap as the belt-and-braces second carrier guard."
+ },
+ "artifacts": {
+  "track_traces": "fidelity/wave8_runs/dissection/{gap_ev529,abs_ev91}_track_traces.csv.gz (carrier + full ancestor chains, all telemetry columns)",
+  "telemetry_code": "worktree /eos/user/j/jeffkrup/agentic/hepemshow-diag branch knob/step-telemetry (left in place); env HEPEMSHOW_STEP_DUMP=<path> + HEPEMSHOW_DUMP_EVENT=<idx>, no-op when unset",
+  "byte_identity_gate": "n=2000 -s 1 gap-seed unsevered: edeps_1, edeps_gap_1, dump.txt all byte-identical to fidelity/wave8_runs/uns_s1 (7ebab9e binary)"
+ }
+}

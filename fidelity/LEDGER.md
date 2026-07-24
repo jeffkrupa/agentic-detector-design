@@ -721,3 +721,124 @@ it hits a variance wall. jsonl entry is the twin.)*
   W-ranked window-edge list and the direct top-dipole list).
 - **Status**: part A complete (2026-07-24); dissection (part B) and cap
   knobs (part C) pending.
+
+### part C — dissection (single-event step-level replay, DONE 2026-07-24)
+
+- **Method.** Worktree `/eos/user/j/jeffkrup/agentic/hepemshow-diag`, branch
+  `knob/step-telemetry` (from `knob/race-score` 7ebab9e; parallel wave-9 tree
+  untouched), forward build `build_diag_fwd/`. Env-gated telemetry
+  (`HEPEMSHOW_STEP_DUMP=<path>` + `HEPEMSHOW_DUMP_EVENT=<idx>`): one CSV line
+  per step (lineage, layer/region, winner, boundary flag, position/direction/
+  stepLen/pStepLen/edep/EKin/numIA/mfp/distB/distP values AND dots) plus
+  track-birth lines; per-track death summaries derived offline from the step
+  lines. **Byte-identity gate PASSED**: env unset, n=2000 gap-seed unsevered
+  s1 → `edeps_1`, `edeps_gap_1`, event `dump.txt` all byte-identical to the
+  7ebab9e reference (`wave8_runs/uns_s1`). Replays with shared RNG stream
+  (`-n event+1`): both target events' dump rows byte-identical to part A.
+- **Gap dipole, s1 ev529 (amplitude 2.08e8, L32|L33).** One track carries
+  the whole dipole: e- id 10489 (parent γ 10487), born 0.244 MeV with
+  HEALTHY dots (ẋ=240, Ė=0.20), 88 steps ping-ponging the L32-gap|L33-abs
+  interface. Its per-layer dot sums: L32 −2.0787e8 / L33 +2.0787e8, and the
+  track TOTAL = +0.2003 = its birth Ė exactly (1e-9 relative): the spike is
+  pure bin relabeling of a fixed energy. Of 12,111 tracks in the event only
+  17 ever exceed |edep_dot|>2e3 (next-largest peak 9.7e4).
+- **The generating loop (named lines, measured gains)** — a 3-carrier S4
+  compounding loop, one multiplication per boundary crossing:
+  1. *S2 numerator* (Box.cc `t=(copysign(hD,v)−p)/v` via
+     `Geometry::CalculateDistanceToOut`): crossing stepLen_dot =
+     (plane_dot − ẋ)/vx. Crossing vx were 0.23–0.90 — **NOT grazing**; the
+     1/vx factor contributed ≤5× while the accumulated-ẋ numerator carried
+     up to 1.8e8. Post-crossing ẋ resets to the plane dot (33/19 ✓ healthy).
+  2. *Energy conservation* (`ApplyMeanEnergyLoss`, eloss=pStepLength·dEdx):
+     the crossing eloss_dot is scored in the current bin (first pole) and
+     sign-flips into Ė. Measured Ė after crossings: 138 → 1.66e3 → 3.75e5
+     → 2.09e8 (per-cycle gains ×12, ×226, ×557).
+  3. *MSC re-injection* (UMSC `SampleCosineTheta`/rotate/displacement,
+     S5/S6/S7 class): angle Jacobians convert pSL_dot and Ė into direction
+     dots — v̇x 0.9→3.0e4 in ONE scattering (step 0; gain ≈63 per unit
+     pSL_dot), later up to 1.3e10; each step rebuilds ẋ += sL·v̇x
+     (~1.7e7/step measured, ≈80% of growth; displacement dots ≈20%).
+  4. *Scoring*: pole 1 at crossing step 70 (edep_dot −2.09e8, L32-gap);
+     pole 2 at range-out step 87 (full-deposit branch dumps the accumulated
+     Ė: +3.38e8; net L33 +2.08e8 after fluctuation-dot recycling at steps
+     79–86, which moved Ė 2.09e8→3.38e8 with matching negative edep dots).
+  - Top-5 |edep_dot| steps: st87 +3.38e8 (range-out), st70 −2.09e8 (S2
+    crossing), st85/84/86 −4.3e7/−2.7e7/−2.1e7 (fluctuation recycling).
+- **Absorber spike, s1 ev91 (W=−3.6e6) = SAME mechanism** (the audit's
+  "expect S1" prediction is falsified): an L18-gap|L19-abs dipole on e- 3291
+  (born 0.355 MeV), track total dot = −2042 = birth Ė exactly. Seeding is
+  multi-generation: e+ 3262 (born ẋ=0.0245) ran ~1.5 cycles of the same
+  loop at the same interface (ẋ→2.2e4); its brems γ 3285 was born with
+  ẋ=4.3e3 and inherited v̇x≈−2.6e4, and after a 5 mm flight the secondary
+  e- 3291 was born with ẋ=−1.24e5; crossings at steps 2 and 12 (sL_dot
+  −2.5e5, −2.18e7) pumped Ė to 3.87e6; range-out at step 31 = +4.1e6 pole.
+- **S1 verdict**: the electron mfp×numIA product NEVER set the step limit
+  on any amplifier step in either event (all winner=−2 continuous/MSC-
+  limited; numIA dots reached 4.9e5 but never landed in a stepLen). Gamma
+  S8 injections were seed-scale (~1e4, `-C 1000` active).
+- **Cap counterfactuals (audit proposals)**: #1 el-mfp-cap would NOT have
+  neutralized either event. #2 track-dot-cap @250 mm/seed: neutralizes both
+  (gap pole 2.1e8→≲2e3; abs 3.7e6→≲2.3e2); caveat: Ė and v̇x stay uncapped
+  as spec'd — here both are fed only through the clamped crossing dot, but
+  an explicit Ė cap (~1e2) would close the second carrier. #3 boundary-dot-
+  cap @40 mm/seed: neutralizes both at the generator (gap pole →≈63 MeV/mm,
+  abs →≈2e1, at/below the ~200 physical scale) and bounds the per-crossing
+  Ė gain, collapsing the loop; residual: seed-scale γ injections and
+  inherited v̇x persist but cannot compound. **Recommend #3 first** (caps
+  the net Box distance dot — no cancellation-pair breakage; dipoles already
+  cancel to ≤1.4e-2 in Σ50, so the total derivative is provably untouched),
+  optionally + an Ė-dot governor.
+- **Artifacts**: `fidelity/wave8_dissection_summary.json`; carrier+ancestor
+  step traces `fidelity/wave8_runs/dissection/*.csv.gz` (untracked);
+  telemetry code left on the worktree branch `knob/step-telemetry` (never
+  pushed; worktree left in place).
+
+## Wave 9 — surgical dot caps to replace stop-grad severing (IMPLEMENTED, pre-registered)
+
+- **Knobs**: `--boundary-dot-cap <mm/seed>` (id 1016) + `--el-mfp-cap <mm>`
+  (id 1015), branch `knob/dot-caps` @ `fc388aa` (1 commit over
+  `knob/race-score` @ 7ebab9e) + g4hepem branch `el-mfp-cap` @ `73405c2`
+  (1 commit over 91cbee3), both default off, derivative-only KeepPrimal.
+- **Hypothesis** (wave-8 census + amplification audit): the unsevered
+  gap-core variance explosion is adjacent-bin relabeling dipoles with an
+  unbounded boundary-local carrier (S2), cancelling to ≤1e-2 in the
+  50-layer total; the unsevered median already sits on FD truth. The
+  absorber unsevered deficit candidate carrier is the raw electron
+  mfp×numIA step-limit product (S1, ElectronManager.icc:447 — the gamma
+  analogue is `-C`-capped). Surgical caps at these two sites should tame
+  spike variance without severing any track.
+- **Implementation**:
+  - `--boundary-dot-cap` (audit proposal 3): in `Box::DistanceToOut(r,v)`
+    the derivative part of the returned NET distance is clamped to ±cap,
+    applied ONCE after the min over the three axes — no individual member
+    of a cancelling pair (axis terms, numerators/denominators) is touched
+    (audit S7 cancellation-fragility honored). Value untouched exactly
+    (`stop_grad(t) + (t − stop_grad(t))·s`, s = cap/|ṫ| when |ṫ| > cap).
+    Applies to all tracks. **Forward-mode-only**: the clamp scale depends
+    on the tangent value and cannot be recorded on a reverse Jacobian
+    tape; the reverse build rejects a nonzero cap with a clear error
+    (race-score precedent).
+  - `--el-mfp-cap` (audit proposal 1 = RECON D2): exact mirror of the
+    gamma `-C` pattern (91cbee3) at the electron `dStepLimit = mfp·numIA`
+    site — when mfp > cap, d/d(mfp) is zeroed (also killing the
+    near-threshold `numIA·ṁfp` divergence) and d/d(numIA) is clamped to
+    cap. New `G4HepEmElectronManager::ConfigureMfpCapRegularization`,
+    wired in HepEmShow.cc next to the gamma call. Both modes. The
+    g4hepem edit lives in the source tree AND is mirrored byte-identically
+    into `install/` and `install_reverse/` (the copies the builds compile).
+  - **`-A` relationship (decrement side)**: `RegularizedNumIADecrement`
+    (the `-A` floor) already bounds the numIA-decrement derivative
+    coefficients from the small-mfp side (1/mfp, p/mfp² with floored mfp);
+    on the large-mfp side those coefficients shrink — no cap needed.
+    The two knobs are complementary and independent; nothing to mirror.
+  - Diff sizes: hepemshow 4 files +83/−2; g4hepem 2 files +39/−1.
+- **Pre-registered predicted signature** (before any preview run):
+  1. At some cap setting, UNSEVERED (-x 0 -y 0 -B 0 -N 1e-3 -C 1000) +
+     caps: gap core L5–18 mean within 2σ of FD truth 195.8 ± 9.4 with
+     core variance ≤ 100× the canonical-severed reference.
+  2. Absorber core mean moves from the unsevered-uncapped robust locator
+     (~1430–1580) toward truth 2233.7 ± 14.8 when `--el-mfp-cap` is on.
+  3. Primal byte-identical with caps on.
+  4. The boundary cap changes the layer-sum total derivative by <1%
+     (dipoles cancel in totals — capping them must not move the total).
+- **Status**: implemented + pre-registered (2026-07-24); gates running.
