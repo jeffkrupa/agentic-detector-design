@@ -648,3 +648,76 @@ it hits a variance wall. jsonl entry is the twin.)*
   secondary-kinematics severed lines). hepemshow working tree restored to
   `phaseA-perlayer-gap-energy`; agent binaries `build_agent_fwd/rev` left
   at `knob/race-score` @ 7ebab9e (knob-off = bit-identical to 79f7383).
+
+## Wave 8 — unsevered-regime forensics (part A: spike-event mining, DONE)
+
+- **Measurement only, no C++ changes.** Binary `build_agent_fwd/HepEmShow`
+  @ `knob/race-score` 7ebab9e, all wave knobs OFF. Canonical base args,
+  n=2000, event dumps on. Configs (gap seed `-g 5.7:1`, seeds 1–2):
+  reference `-x 2 -y 1 -B 1`; unsevered `-x 0 -y 0 -B 0`; intermediate
+  `-x 0 -y 1 -B 1`; plus absorber seed `-a 2.3:1` unsevered, seed 1.
+  7 runs, 318–335 s each (unsevered is NOT slower). Analysis
+  `fidelity/wave8_spikes.py`; summary `fidelity/wave8_spikes_summary.json`;
+  spike list `fidelity/wave8_spike_events.json`; raw dumps
+  `fidelity/wave8_runs/` (untracked). Event signatures and primal edeps
+  are byte-identical across all three severing configs (severing is
+  derivative-only; cross-config event matching is exact).
+- **Core-window (L5–18) per-event dot sum W_e, gap seed** (FD truth
+  195.8 ± 9.4): 0 NaN/inf events anywhere (the "NaNs expected" prior did
+  not materialize at n=2000).
+  | config | mean ± SE | median | tm5% | var | top-1% var share |
+  |---|---|---|---|---|---|
+  | ref s1/s2 | 565±35 / 589±15 | 504 / 494 | 540 / 535 | 2.4e6 / 4.5e5 | 0.93 / 0.62 |
+  | uns s1/s2 | −340±1184 / −991±2212 | **202.5 / 196.0** | 273 / 216 | 2.8e9 / 9.8e9 | 0.99 / 1.00 |
+  | int s1/s2 | 5571±23470 / −9630±11380 | 132.8 / 113.0 | 236 / 113 | 1.1e12 / 2.6e11 | 1.00 / 1.00 |
+  - Variance ratios vs reference: **unsevered ×1.2e3 / ×2.2e4**;
+    **intermediate ×4.6e5 / ×5.7e5** (the measured "1e6" in this testbed —
+    and it belongs to the PARTIALLY severed config, not the unsevered one).
+  - **The unsevered MEDIAN sits on FD truth** (202.5/196.0 vs 195.8 ± 9.4)
+    while reference medians sit at the known ~3× inflation (≈500). Raw
+    unsevered means are noise (SE > 1000); 5%-trimmed means 273/216.
+  - Intermediate (-x 0 -y 1 -B 1) is the WORST config on every axis:
+    grazing/backward guards flag tracks mid-flight, SanitizeTrackState
+    zeroes their position dots, and the wave-1 zombie prefix-dot injection
+    does the rest — partial severing CREATES the biggest spikes. Its
+    median (133/113) also undershoots truth (severed legitimate mass).
+- **Spike anatomy — the spike population is adjacent-bin relabeling
+  DIPOLES, not lost-in-the-weeds blowups**: all top-10 |W_e| events in
+  both unsevered gap runs are L18|L19 pairs of huge equal-and-opposite
+  dots (|D18| ≈ |D19| up to 3.8e6, opposite sign) whose FULL-detector sum
+  is ordinary (|Σ50 dots|/|W_e| ≤ 1.4e-2, median ~1e-3); they rank at the
+  top of the L5–18 statistic only because the window edge slices the
+  dipole. Spike events are otherwise NORMAL showers: steps/tracks within
+  ±6% of the run median, no step-count signature. Mining dipoles directly
+  (largest opposite-sign adjacent-bin pair per event): 78% of unsevered
+  events carry a dipole > 1e4 MeV/mm, 4.5% > 1e6, largest **2.1e8**
+  (cancellation residual 1e-9 relative); left-layer histogram is broad
+  over L20–40 (shower-tail region), no single hot layer. Intermediate:
+  95% > 1e4, 23% > 1e6 (≈5× the unsevered count at 1e6 — severing
+  amplification). Reference: 5% > 1e4, 0 > 1e6.
+  - **Window/total variance ratio** (var W_e / var Σ50): uns 77/130,
+    int 1.2e4/62 — the unsevered variance explosion is overwhelmingly
+    relabeling noise that cancels in the total-detector derivative
+    (uns total: mean 189±135 s1, −151±194 s2). A surgical cap need only
+    tame a bin-transfer term, not a net-derivative term.
+  - Cross-config: unsevered top-20 spike events are spiky in the
+    intermediate config too (median |W| percentile 96/98) but NOT in the
+    reference (median percentile 67/76) — severing kills these events'
+    dots and replaces them with its own (bigger) zombie population.
+- **Absorber seed, unsevered** (FD truth 2233.7 ± 14.8): median 1430,
+  tm5% 1580, tm1% 1876, raw mean 994 ± 3032; var 1.8e10, window/total
+  ratio only 2.9 (unlike the gap channel, most variance is NOT
+  relabeling); dipoles present (99.6% > 1e4, largest ~2e6-e7 class).
+  Same dipole population exists, but robust locators stay ~15–35% below
+  FD truth — the unsevered absorber estimator does not obviously center
+  on truth at this n; needs the dissection/cap stage to say more.
+- **Implication for the cap design** (part B/C): the guilty object is a
+  boundary-local antisymmetric transfer with an unbounded carrier
+  (grazing 1/vx class at layer interfaces, broad in depth) — cap the
+  per-step bin-transfer dot (or floor |vx| in the dot only), and the
+  total derivative is provably untouched (dipoles cancel to ≤1e-2
+  relative already). Top spike/dipole (seed, event) lists for step-level
+  dissection: `fidelity/wave8_spike_events.json` (includes both the
+  W-ranked window-edge list and the direct top-dipole list).
+- **Status**: part A complete (2026-07-24); dissection (part B) and cap
+  knobs (part C) pending.
