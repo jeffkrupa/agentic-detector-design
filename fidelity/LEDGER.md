@@ -930,3 +930,74 @@ it hits a variance wall. jsonl entry is the twin.)*
   left at `knob/dot-caps` @ fc388aa (knobs-off = bit-identical to
   7ebab9e); g4hepem source+installs at `el-mfp-cap` @ 73405c2
   (default-off, baseline-safe).
+
+## Wave 10 — accumulated-state dot governor (`--track-dot-cap`)
+
+- **Knob**: `--track-dot-cap <P_mm>[:<E_MeV>]` (id 1017), branch
+  `knob/dot-governor` in worktree `/eos/user/j/jeffkrup/agentic/hepemshow-gov`
+  (cut from `knob/dot-caps` @ fc388aa; main tree, `build_agent_fwd/rev` and
+  the `-diag` worktree untouched — a parallel condor batch uses them).
+  Default off, derivative-only, KeepPrimal (values never touched). Per-track
+  governor on the ACCUMULATED track-state dots, applied at each step boundary
+  (top of the stepping while-loop in both `GammaStepper` and
+  `ElectronStepper` — after the previous step's update, before the next step
+  uses the state; also catches secondary birth dots on the first iteration):
+  - position-x dot clamped to ±P [mm/seed];
+  - kinetic-energy dot clamped to ±E [MeV/seed], with the cached log-energy
+    companion dot rescaled consistently (d(logE) = dE/E) so the clamp cannot
+    leak around through `GetLogEKin` interpolations;
+  - direction-vx dot clamped to a fixed ±1e3 whenever the governor is on
+    (trivially co-located in the same helper; the dissection saw v̇x reach
+    1.3e10 — ±1e3 only fires on pathology).
+- **Hypothesis** (wave-8 dissection + amplification-audit proposal 2): the
+  S4 ping-pong loop (position-dot → stepLen-dot → eloss-dot → energy-dot →
+  MSC angle Jacobians → direction-dot → position-dot; measured per-cycle
+  gains ×12–×557) compounds through THREE accumulated state carriers.
+  Clamping the stored carriers at each step boundary bounds the loop
+  (5^k → ≤ cap) while keeping every track alive and scoring — unlike the
+  per-crossing boundary cap it does not truncate the legitimate 1/vx
+  net-derivative mass of any individual crossing, so it should recover the
+  absorber channel where b40/b160 failed.
+- **Implementation**: hepemshow 4 files, ~+190 lines over fc388aa.
+  `InputParameters.hh` (flag 1017, `<P>[:<E>]` parse, both modes allowed —
+  unlike `--boundary-dot-cap` there is no reverse rejection);
+  `SteppingLoop.hh/.cc` (`ConfigureTrackDotGovernor`, `GovernTrackStateDots`
+  called at the two while-loop tops); `HepEmShow.cc` (wiring). Forward mode:
+  tangents clamped in place via `SET_DOTVALUE` on the stored state (primal
+  bytes untouched by construction). **Reverse mode**: the forward tangent
+  clamp is nonlinear in the tangent and cannot be taped (wave-9 precedent);
+  instead the governor records an identity external function
+  (`codi::ExternalFunctionHelper`, identity primal, KeepPrimal) whose
+  REVERSE interpretation clamps the corresponding ADJOINTS at the same
+  program points: position-x adjoint to ±P, direction-vx adjoint to ±1e3,
+  ekin adjoint to ±E, log-ekin adjoint to ±E·max(1, EKin) (scale-matched,
+  adjoint_logE = EKin·adjoint_E). This bounds the identical amplification
+  loop traversed backward; it is the reverse-sweep mirror, NOT the transpose
+  of the tangent clamp (no such linear transpose exists), so fwd=rev exact
+  agreement is only expected when no clamp fires — the gate measures the
+  governed-on agreement and a huge-cap control must reproduce knob-off
+  fwd=rev exactly. (CoDiPack 3.1.0 note: array user data hits a compile bug
+  in `ExternalFunctionUserData::DataArray::clone`; scalar data items used.)
+- **Pre-registered preview grid** (written BEFORE any preview run; outline
+  pre-registered in `ledger.jsonl` wave-10 entry):
+  - ABSORBER (`-a 2.3:1`), unsevered `-x 0 -y 0 -B 0 -N 1e-3 -C 1000`,
+    n=2000, seeds 1–2: governor grid **P ∈ {250, 1000} × E ∈ {50, 200}**.
+    Scale reasoning: legitimate |ẋ| ≤ N_layers×|seed| ≈ 50 × grazing
+    allowance 1/f = 5 ⇒ P = 250 (audit proposal-2 value; the dissection
+    counterfactual shows it neutralizes both dissected events), P = 1000 =
+    one decade looser to probe clamp-aggressiveness; E: healthy birth Ė is
+    O(0.2–2e3) with pathological onset ≥ 1e3 and poles at 3.7e6–2.1e8 —
+    E = 50 sits ~100× above the healthy sub-MeV-track scale, E = 200 one
+    half-decade looser; both are 4–6 orders below the measured pathology.
+    Metrics: core L5–18 per-event W_e mean ± SE, median, variance ratio vs
+    canonical severed (2.4e6 s1 / 4.5e5 s2), vs FD truth 2233.7 ± 14.8.
+    **Success bar: ≥ 0.9× truth at ≤ 100× canonical variance.**
+  - GAP compatibility (`-g 5.7:1`) at the best absorber (P,E) WITH
+    `--boundary-dot-cap 80`, seeds 1–2: core mean unchanged (<2σ) vs
+    wave-9's b80 207.9 ± 6.0.
+  - Combined-config ABSORBER (`-a 2.3:1`, `--boundary-dot-cap 80` +
+    governor, seeds 1–2): does the gap-tuned boundary cap still damage the
+    absorber with the governor active (wave-9: b40 → wrong sign, b160 →
+    −45%), or does the governor rescue it? Decides whether ONE unified
+    config exists.
+- **Status**: implemented + pre-registered (2026-07-24); gates running.
