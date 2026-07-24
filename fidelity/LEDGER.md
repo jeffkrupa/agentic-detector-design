@@ -396,3 +396,87 @@ it hits a variance wall. jsonl entry is the twin.)*
   hepemshow working tree restored to `phaseA-perlayer-gap-energy`; agent
   binaries `build_agent_fwd/rev` left at `knob/score-surface` @ c1945ff
   (knob-off = bit-identical to agent-knobs).
+
+## Wave 6 — mode 4: severed-only one-sided per-bin densities
+
+- **Knob**: `--score-surface-term 4` on branch `knob/score-surface`
+  (2 commits over c1945ff: 7dba60d mode 4, 79f7383 fix-attempt-1 guard =
+  final HEAD), default off, derivative-only. Composition of the two measured
+  wave-5 halves: mode-3 POPULATION (severed steps only = `stop_tracking ||
+  isUnsafeStep`; live tracks carry the relabeling flux pathwise — mode-2's
+  −25.7k double-count proof) and CARRIER (severed prefix anchor
+  `fLayerStartX[i_step]`), with mode-2's one-sided end/start-adjacency
+  machinery so each bin's Leibniz term is priced in its own material
+  (per-step route: each severed step adjacent to a face contributes its own
+  ρ = edep/|Δx| to its own bin; a side with no adjacent severed step gets no
+  term — the one-sided guard is automatic in the per-step formulation).
+- **Pre-registered success bar** (task spec): gap core L5–18 AD/FD_1M in
+  [0.75, 1.35] AND absorber ≥ 0.75; per-event var_dE core/tail ≈ mode 3.
+- **Gates** (canonical flags + `--stopgrad-prefix-anchor 1`; both 7dba60d
+  and the final 79f7383): G1 regression — modes 0–3 outputs byte-identical
+  to the c1945ff binary (n=500, edeps + edeps_gap; mode-3 sum cross-check
+  −2.7950806012 = wave-5 record) — PASS. G2 primal identity mode 4 — gap
+  s1–2 + abs s1–2 n=2000 (7dba60d) and gap/abs s1 (79f7383), mean_E/var_E
+  byte-identical vs wave-5 mode-0 runs; derivative column active in **49/50
+  layers — L0 unchanged by design** (`fLayerStartX[0]` has zero dot; layer-0
+  severed steps lost nothing under prefix-anchor, so mode 4 correctly adds
+  nothing) — PASS. G3 fwd=rev n=500 to all printed digits (7dba60d:
+  −103760.639026; 79f7383: −98060.1742341; rel 0.0) — PASS. G4 NaN scan
+  clean — PASS. G5 runtime paired probe (3 alternating off/on pairs,
+  n=1000): median ratio 1.002 — PASS (measured on 7dba60d; the guard only
+  prunes work).
+- **Preview** (paired triplets g∓0.02 / a∓0.02, `--rng-lineage 1`, gap
+  seeds 1–4 = 8000 paired events, abs seeds 1–2 = 4000, n=2000/run; ratios
+  vs 1M FD truth gap 195.8 ± 9.4 / abs 2233.7 ± 14.8; summary
+  `fidelity/wave6_preview_summary.json`): **decisive FAIL, both channels,
+  both variants**:
+  - mode 4 @7dba60d: gap core AD/FD_1M = **−78.8 ± 5.9** (AD −15424 ± 898
+    vs truth +195.8), abs core = **−6.83 ± 0.74** (AD −15253 ± 1650 vs
+    +2233.7); gap L49 AD −1719 ± 166 (FD −5.4); gap L0–2 −6.7 ± 1.6
+    (FD 3.5); abs L0–2 8.8 ± 1.1 (FD 28.4).
+  - fix attempt 1 (79f7383): the severed start-adjacency population is rich
+    in sanitized 1e−6 mm push steps whose ρ = edep/|Δx| is floored at
+    |Δx| = 1e−6 (ρ amplified ~1e6×) → guard: a floored-|Δx| step has no
+    usable one-sided density, treat that side as absent. Result: fwd
+    layer-sum −103760.6 → −98060.2 (−5%); preview gap core **−73.2 ± 4.9**,
+    abs **−6.21 ± 0.53** — the artifact class was real but subdominant
+    (~7% of the blow-up).
+  - var_dE vs mode 3 (prediction "≈ same" also FAILS): gap core ×232,
+    gap tail ×25, abs core ×34 (vs off: gap core ×2393); abs tail ~1.14.
+  - Comparison rows (core AD/FD_1M gap | abs): off 0.57/0.55 (in-window
+    0.48/0.42), m1 5.50/0.865, m3 4.54/0.780, **m4 −73.2/−6.21**.
+- **Interpretation — the failure is structural, not an estimator bug**:
+  severed-only one-sided pricing breaks the within-bin two-face cancellation
+  that tames the full one-sided Leibniz expansion. Per severed +x crossing
+  of layer plane x_j, the left-bin term carries ρ_gap × anchor_dot(j−1)
+  while the right-bin term carries ρ_abs × anchor_dot(j): the bin-level net
+  is ~ −j × (ρ_abs − ρ_gap) per crossing — matching the observed
+  ~−1000/layer core profile (both channels pulled to ≈ −15k, ~60% of
+  mode-2's blow-up from the severed subset alone). In the field picture the
+  one-sided boundary terms are only correct WITH the interior ∂ρ/∂θ partner
+  term, which severed steps by definition do not carry pathwise — and which
+  mode 2 measured for live tracks as the exact canceller. The per-step
+  lost-derivative reconstruction of what `--stopgrad-prefix-anchor` severed
+  is mode-3's SYMMETRIC transfer (single ρ, single carrier, exact zero-sum
+  per crossing); "each side its own density" is not a property of the
+  severed mass. Fix attempt 2 not spent: per-material dE/dx tables would
+  inherit the same structural imbalance (documented deviation).
+- **Consequence**: mode 3 stands as the best severed-only estimator
+  (abs 0.780 ± 0.069; gap 4.54 ± 0.24); the residual gap failure is NOT a
+  side-assignment-of-ρ problem fixable within the severed-only surface-term
+  family. The remaining gap inflation needs a different mechanism class
+  (e.g. the branch-flip/score-function route, RECON D4, with
+  phantom-subtree rollouts under rng-lineage).
+- **Deviations**: (i) task-spec preview success bar used (gap [0.75, 1.35],
+  abs ≥ 0.75) — measured FAIL; 1 of 2 pre-authorized fix attempts spent
+  (floored-ρ guard, gated + measured), attempt 2 declined on structural
+  grounds; (ii) G5 runtime measured on 7dba60d only (guard strictly
+  removes work); (iii) preview reused the wave-5 side runs and off-centers
+  (t6_*_lo/hi, t6_*_ctr_off — identical binaries for those legs), only the
+  6 mode-4 center runs are new per variant.
+- **Status**: gated + preview measured, FAIL vs pre-registered bar
+  (2026-07-24); awaiting human verdict (recommend: reject mode 4, keep as
+  measured-null branch commits). hepemshow working tree restored to
+  `phaseA-perlayer-gap-energy`; agent binaries `build_agent_fwd/rev` left at
+  `knob/score-surface` @ 79f7383 (knob-off = bit-identical to agent-knobs;
+  modes 0–3 bit-identical to c1945ff).
