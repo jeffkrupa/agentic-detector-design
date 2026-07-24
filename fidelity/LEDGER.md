@@ -1000,4 +1000,101 @@ it hits a variance wall. jsonl entry is the twin.)*
     absorber with the governor active (wave-9: b40 → wrong sign, b160 →
     −45%), or does the governor rescue it? Decides whether ONE unified
     config exists.
-- **Status**: implemented + pre-registered (2026-07-24); gates running.
+- **Gate results** (canonical severed args for G1; unsevered for knob-on;
+  final binary `knob/dot-governor` @ 3b6d45f — the D-field commit is
+  behavior-preserving: all six n=500 fwd/rev outputs bit-identical across
+  46747fc → 3b6d45f):
+  - G1 knob-off byte-identity vs fc388aa, n=2000 s1: fwd `edeps_1` +
+    `edeps_gap_1` identical (`build_agent_fwd` reference run vs gov build);
+    rev `barInputs` + `barInputsPerLayer` + `edeps_1` + `edeps_gap_1`
+    identical. Bonus: gov knob-off UNSEVERED gap+abs s1 bit-identical to
+    the wave-9 fc388aa off runs. PASS.
+  - G2 primal identity knob-on (250:50, unsevered, gap+abs seeds s1–2):
+    mean_E/var_E byte-identical in edeps + edeps_gap (8/8 comparisons);
+    derivative column changes 50/50 layers. PASS.
+  - G3 fwd=rev n=500 (unsevered, gap seed): knob-off rel 8.4e−12 (PASS);
+    **never-fires control** (`--track-dot-cap 1e30:1e30:1e30`): fwd
+    bit-identical to knob-off; rev bit-identical except 2/202
+    `barInputsPerLayer` values at max rel 1.1e−13 (adjoint accumulation
+    order through the identity external function) — the tape machinery is
+    an exact no-op when no clamp fires. **Governor-on (250:50): fwd
+    Σ mean_dE = 579.404 vs rev gap row = 1600.995 (rel 0.64) — NOT equal
+    when clamps fire.** This is inherent, not a bug: the forward tangent
+    clamp and the reverse adjoint clamp are different regularizations of
+    the same governor (a tangent-nonlinear op has no linear transpose);
+    they coincide exactly when no clamp fires (control above). The
+    pre-registered "tape-compatible reverse governor" is delivered in the
+    verified sense: recordable, primal-exact, finite, bounded, exact
+    no-op at non-firing caps. First reverse-capable knob of the cap
+    family (boundary-dot-cap and race-score are fwd-only).
+  - G4 NaN scan: 0 nonfinite in all gate outputs, all 14 preview runs'
+    edeps and all event dumps. PASS.
+  - G5 runtime (fwd, paired off/on n=1000): ratios 0.943 / 0.994 ⇒ ≈0.97
+    (~1.0 as expected). PASS. Reverse governor-on ≈2.5× (452 s vs 177 s,
+    n=500) — the per-step ExternalFunctionHelper push; reverse is
+    gate-only.
+- **Preview** (unsevered, n=2000, seeds 1–2 pooled; abs FD truth
+  2233.7 ± 14.8; var ratios vs canonical severed var(W_e) 2.4e6 s1 /
+  4.5e5 s2; summary `fidelity/wave10_preview_summary.json`, raw
+  `fidelity/wave10_runs/` untracked):
+  | absorber grid | pooled mean ± SE | ratio | z | median s1/s2 | var× s1/s2 | Σ50 s1/s2 |
+  |---|---|---|---|---|---|---|
+  | P250:E50   | 1901.1 ± 124.9 | 0.851 | −2.65 | 1753/1745 | 27.8/128.6 | 3215/3100 |
+  | P250:E200  | 1549.3 ± 120.9 | 0.694 | −5.62 | 1390/1429 | 25.5/124.1 | 885/696 |
+  | **P1000:E50** | **2417.7 ± 194.0** | **1.082** | **+0.95** | 2214/1953 | 74.8/270.7 | 5134/5109 |
+  | P1000:E200 | 1938.4 ± 192.9 | 0.868 | −1.53 | 1786/1599 | 75.0/261.4 | 1212/1173 |
+  - **Bar verdict (≥0.9× truth at ≤100× canonical variance): P1000:E50
+    passes the mean bar** — 1.082 ± 0.087, within 1σ of FD truth, the
+    first absorber-channel configuration in the program consistent with
+    truth (from unsevered-uncapped robust locators 0.64–0.71 and severed
+    0.55–0.78). **Variance bar is MARGINAL**: 74.8× (s1, passes) vs
+    270.7× (s2 — but against the fluke-low canonical s2 reference;
+    absolute s2 variance 1.2e8 is LOWER than s1's 1.8e8; pooled absolute
+    1.5e8 ≈ 105× the pooled canonical 1.4e6).
+  - Surprise (measured): E200 is WORSE than E50 in mean (0.87 vs 1.08 at
+    P1000) — the looser Ė clamp admits more negative fluctuation-recycling
+    dot mass; the Ė clamp is doing real directional work, not just
+    variance-taming.
+  - Gap, governor alone (250:50, gate-C runs): medians 190.5/229.1 sit on
+    truth 195.8; var 7.3×/44.6× canonical — enormously better than
+    uncapped unsevered (1.2e3/2.2e4×) but not competitive with b80
+    (0.06/0.31×).
+  - **Gap compatibility** (b80 + governor 1000:50): pooled 162.3 ± 23.3
+    vs wave-9 b80-alone 207.9 ± 6.0 ⇒ Δ = −45.6, z = −1.89 — inside the
+    pre-registered <2σ bar, but only just, and var(W_e) rises ~14× vs
+    b80 alone (2.1e6/2.2e6 = 0.89×/4.9× canonical). The governor is not
+    free in the gap channel at these scales.
+  - **Combined-config absorber** (b80 + governor 1000:50):
+    **−762.0 ± 127.8 — WRONG SIGN** (medians −737/−769; Σ50 −4586/−3808).
+    The governor does NOT rescue the absorber from the gap-tuned boundary
+    cap: b80 amputates the real crossing mass at the generator, upstream
+    of the state clamps, exactly as in wave-9 (b40 → −697). **NO unified
+    config exists in this cap family** — channel-specific configs stand:
+    gap → `--boundary-dot-cap 80`, absorber → `--track-dot-cap 1000:50`.
+- **Deviations**: (i) after the first control run exposed that the fixed
+  ±1e3 direction clamp always fires, the flag gained an optional third
+  field `P[:E[:D]]` (D = dir-vx cap, default 1e3) so a true never-fires
+  control exists — regression: all pre-change gate outputs bit-identical
+  under the final binary (fix attempt 1 of 2, spent on a control-design
+  flaw, not physics); (ii) fwd ≠ rev under active clamping is documented
+  as inherent (see G3) — the reverse governor clamps adjoints at the same
+  program points with the same numeric caps (units differ: adjoint units
+  are MeV/mm, MeV/MeV); (iii) compat/combined legs ran seeds 1–2 (task
+  sketch said one combined run — one extra n=2000 run for seed scatter);
+  (iv) G5 measured on 46747fc (bit-identical outputs ⇒ ratios carry);
+  (v) wave-9 off runs reused as knob-off references (G1 proves binary
+  equivalence); (vi) log-EKin companion dot is governed alongside EKin
+  (forward: rescaled to clamped_dot/E; reverse: adjoint cap E·max(1,EKin))
+  — not in the task sketch but required, else the clamp leaks through
+  `GetLogEKin` interpolations.
+- **Status**: gated + preview measured (2026-07-24) — mean bar PASS at
+  P1000:E50 (first truth-consistent absorber config), variance bar
+  marginal (~105× pooled vs 100× bar), unified-config question answered
+  NO; awaiting human verdict (recommend: accept the governor as the
+  absorber-channel severing replacement pending condor validation at
+  scale, keep channel-specific configs, and treat the E-clamp asymmetry
+  as the next diagnostic handle). Worktree
+  `/eos/user/j/jeffkrup/agentic/hepemshow-gov` left in place @
+  `knob/dot-governor` 3b6d45f (knob-off = bit-identical to fc388aa);
+  main tree, `build_agent_fwd/rev`, g4hepem and the -diag worktree
+  untouched.
