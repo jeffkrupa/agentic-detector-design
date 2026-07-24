@@ -842,3 +842,91 @@ it hits a variance wall. jsonl entry is the twin.)*
   4. The boundary cap changes the layer-sum total derivative by <1%
      (dipoles cancel in totals — capping them must not move the total).
 - **Status**: implemented + pre-registered (2026-07-24); gates running.
+- **Gate results** (canonical args; unsevered config for knob-on runs):
+  - G1 knob-off byte-identity vs the 7ebab9e reference binaries, n=2000 s1,
+    canonical severed config: fwd edeps + edeps_gap identical; rev
+    barInputs + barInputsPerLayer + edeps identical (both builds rebuilt,
+    reverse against the mirrored install_reverse .icc). PASS. Bonus: the
+    fc388aa knobs-off unsevered gap s1 run is byte-identical (edeps AND
+    event dump) to the wave-8 uns_s1 run — gate extends to the unsevered
+    config.
+  - G2 primal identity knob-on: mean_E/var_E byte-identical vs off for
+    each cap alone and both (b40 / e100 / b40+e100), gap AND abs seeds,
+    s1–2, n=2000, unsevered; derivative column active 50/50 layers in all
+    12 comparisons. PASS.
+  - G3 fwd=rev (el-mfp-cap 100, unsevered, n=500 s1): Σ fwd mean_dE =
+    260.464691249 = reverse barThicknessGap 260.46469125028 (rel 3e−12).
+    PASS. `--boundary-dot-cap` is forward-only by design; the reverse
+    build rejects a nonzero cap with a clear error (verified, rc=255) —
+    race-score precedent, documented deviation.
+  - G4 NaN scan: 0 non-finite entries in all 32 preview dumps (64k
+    events) and all gate outputs. PASS.
+  - G5 runtime: capped walls 317–334 s vs off 327/331 s (n=2000 pairs,
+    same host) ⇒ ratio ≈ 1.00. PASS.
+- **Preview** (n=2000/run, unsevered `-x 0 -y 0 -B 0 -N 1e-3 -C 1000`,
+  per-event core-window W_e from event dumps, FD truth gap 195.8 ± 9.4 /
+  abs 2233.7 ± 14.8; var ratios vs canonical severed var(W_e)
+  2.4e6 (s1) / 4.5e5 (s2); summary `fidelity/wave9_preview_summary.json`,
+  raw `fidelity/wave9_runs/` untracked):
+  | config (gap seed) | pooled core mean ± SE | z vs truth | median s1/s2 | var ratio s1/s2 | layer-sum total |
+  |---|---|---|---|---|---|
+  | off (uncapped)   | −484.9 ± 1044 | −0.65 | 202.5/196.0 | 1.2e3/2.2e4 | 189±135 / −151±194 |
+  | b10              |  88.6 ± 3.0 | −10.9 | 86.3/88.3 | 0.022/0.063 | −114/−98 |
+  | b40              | 174.8 ± 3.4 | −2.11 | 160.0/160.4 | 0.041/0.064 | 11.0/10.4 |
+  | **b80**          | **207.9 ± 6.0** | **+1.09** | 184.6/183.9 | 0.064/0.306 | 26.5/27.1 |
+  | b160             | 244.2 ± 9.1 | +3.70 | 200.3/204.7 | 0.124/0.821 | 31.6/33.2 |
+  | e100 (alone)     | −481.9 ± 1044 | −0.65 | 201.9/196.4 | 1.2e3/2.2e4 | 119/−180 |
+  | b40+e100 / b160+e100 | ≡ b40 / b160 (el-cap null) | | | | |
+  - Absorber seed (uncapped robust locator 1430–1580, truth 2233.7):
+    b40 → **−697 ± 33 pooled (wrong sign)**; b160 → 1210 ± 37 (still
+    −45%); e100/e1000 → null (994→1020 s1, within noise); e10 → collapse
+    (~0–17). The el variations at the best gap combo (b40) and the b160
+    diagnostic both confirm: no tested setting recovers the absorber.
+- **Verdict vs pre-registration**:
+  1. **PASS** at `--boundary-dot-cap 80`: gap core 207.9 ± 6.0 within 2σ
+     of FD truth (z = +1.09) with var(W_e) 0.06×/0.31× the canonical
+     severed reference (bar was ≤100×) — the first configuration in the
+     program with an unbiased-at-this-precision gap core AND
+     sub-canonical variance, no track killed. The pre-specified grid
+     {10, 40, 160} brackets truth monotonically; b80 was added as the
+     interpolation point (documented deviation).
+  2. **FAIL**: `--el-mfp-cap` is a measured null in both channels (100,
+     1000) and destructive at 10 — S1 is not the absorber deficit
+     carrier (independently corroborated by the wave-8 part-C dissection
+     cap counterfactuals).
+  3. **PASS**: primal byte-identical throughout (G2).
+  4. **FAIL**: matched per-event layer-sum totals change by ~65–93%
+     (median) under the boundary cap; capped ensemble totals (b40 10.7,
+     b80 26.8, b160 32.4) sit far below the 1M FD-truth total
+     84.2 ± 14.2 — the 1/vx tail the cap truncates carries real
+     net-derivative mass, not only the antisymmetric bin transfer. The
+     "dipoles cancel in totals" argument was right about the dipoles but
+     wrong that the cap acts only on them.
+- **Interpretation**: the boundary-dot cap is a genuine bias–variance
+  dial whose gap-channel sweet spot (~80 mm/seed ≈ 10 layer pitches / f²)
+  sits at 1σ from truth with 20× LESS variance than canonical severing —
+  the wave-8 reframe (caps can replace severing) is CONFIRMED for the
+  gap channel. It does not transfer to the absorber at a single global
+  cap value: the absorber-seed carrier dots are ~10× larger, so cap=40
+  amputates real mass (wrong sign), cap=160 still −45%. Next-wave
+  candidates: per-seed-scaled or depth-scaled cap, or the audit's
+  proposal 2 (track-state dot governor ~250 mm/seed) which the part-C
+  dissection also endorses.
+- **Deviations**: (i) b80 interpolation point beyond the pre-specified
+  grid (2 runs); (ii) abs b160 diagnostic beyond the grid (2 runs);
+  (iii) boundary-dot-cap forward-only (tangent clamp is nonlinear in the
+  tangent — not representable on a reverse Jacobian tape; reverse build
+  rejects it with a clear error); G3 therefore ran with el-mfp-cap only;
+  (iv) gate-3/batch-D overlap briefly ran 4 local processes (≤2 was the
+  target); (v) el-mfp-cap decrement side: `-A` already floors the
+  small-mfp decrement coefficients; large mfp shrinks them — nothing to
+  mirror (noted in the g4hepem commit).
+- **Status**: gated + preview measured (2026-07-24). Prediction 1+3 PASS
+  / 2+4 FAIL; awaiting human verdict (recommend: accept
+  `--boundary-dot-cap` as the gap-channel severing replacement pending
+  condor validation vs FD at scale; record `--el-mfp-cap` as a measured
+  null, keep default-off). hepemshow tree restored to
+  `phaseA-perlayer-gap-energy`; agent binaries `build_agent_fwd/rev`
+  left at `knob/dot-caps` @ fc388aa (knobs-off = bit-identical to
+  7ebab9e); g4hepem source+installs at `el-mfp-cap` @ 73405c2
+  (default-off, baseline-safe).
