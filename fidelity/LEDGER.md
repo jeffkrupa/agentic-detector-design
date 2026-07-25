@@ -1098,3 +1098,65 @@ it hits a variance wall. jsonl entry is the twin.)*
   `knob/dot-governor` 3b6d45f (knob-off = bit-identical to fc388aa);
   main tree, `build_agent_fwd/rev`, g4hepem and the -diag worktree
   untouched.
+
+## Wave 11 — gap transportability: scale-aware cap + median estimator (A/B MEASURED; C pending condor)
+
+- **No new knob.** Existing binaries: gap = `knob/dot-caps` @ fc388aa
+  (`build_agent_fwd`, mtime/size re-verified 1784902792072373144 ns /
+  429472 B before launch); absorber governor legs (item C) run on condor
+  by a parallel agent — not covered here.
+- **Pre-registered** (ledger.jsonl wave-11, 2026-07-25): (A) the boundary
+  cap should scale with local geometry, cap = c·g with c = 80/5.7 =
+  14.04/mm ⇒ b = 42.1 at g = 3.0 predicts the od FD truth 188.05 ± 9.52;
+  (B) the pooled per-event MEDIAN transports without a tuned constant —
+  od medians at b42/b80 within 2σ of the od FD, median spread < 10%
+  across caps {42, 80} while the mean spreads ~16%.
+- **Runs** (LOCAL, this wave): unsevered `-x 0 -y 0 -B 0 -f 0.2 -N 1e-3
+  -C 1000`, off-design a=2.30 g=3.00, gap seed `-g 3.0:1`, n=2000/seed,
+  event dumps on: b42.1 seeds 1–4, b30 + b60 seeds 1–2 (bracket).
+  Mined without reruns: wave-9 on-design cap-grid dumps
+  (b10/b40/b80/b160, s1–2), wave-9 validation per-event sidecars (b80 at
+  BOTH geometries, 200k events each), wave-8 uncapped unsevered dumps
+  (on-design, s1–2). Analysis `fidelity/wave11_transport.py`, summary
+  `fidelity/wave11_transport_summary.json`; raw `fidelity/wave11_runs/`
+  untracked. Median SEs: nonparametric bootstrap, 10k resamples, pooled
+  events.
+- **A — VERIFIED.** b42 od core L5–18 pooled mean **184.75 ± 4.67**
+  (seed-scatter SE 4.31, seeds 179.5/196.8/177.7/185.0) vs od FD truth
+  188.05 ± 9.52 ⇒ **z = −0.31**, well inside 2σ — where the on-design
+  constant b80 failed od at z = +3.16 (wave-9). Bracket is monotone and
+  brackets truth: b30 171.5 ± 6.2 (z = −1.46), b60 204.8 ± 8.1
+  (z = +1.34), b80 218.6 ± 1.8 (z = +3.16); local slope ≈ +1.11 core-MeV per
+  cap-unit across b30→b60.
+- **B — REFUTED as pre-registered.** The median is cap-DEPENDENT below
+  cap ≈ 80: od b42 median 163.36 ± 1.70 ⇒ z = −2.55 (outside 2σ), and
+  the median spread across od caps {42, 80} is 13.0% (mean spread
+  16.8%) — the < 10% bar fails. Full median-vs-cap curve (z vs local FD
+  truth; od truth 188.05 ± 9.52, on-design 195.78 ± 9.36):
+  | cap | od median (z) | on-design median (z) |
+  |---|---|---|
+  | 10 | — | 86.9 ± 2.1 (−11.35) |
+  | 30 | 154.2 ± 1.6 (−3.51) | — |
+  | 40 | — | 160.0 ± 2.7 (−3.68) |
+  | 42.1 | 163.4 ± 1.7 (−2.55) | — |
+  | 60 | 178.3 ± 2.5 (−0.99) | — |
+  | 80 | 186.1 ± 0.5 (−0.20) [200k] | 184.0 ± 2.9 (−1.20) [4k]; 182.4 ± 0.5 (−1.42) [200k] |
+  | 160 | — | 202.7 ± 4.0 (+0.68) |
+  | ∞ (uncapped) | — | **199.6 ± 6.4 (+0.34)** (mean −665 ± 1255) |
+  Salvage (post-hoc, measured): in the LOOSE-cap regime cap ≥ 80 the
+  median IS truth-consistent in both geometries (all |z| ≤ 1.4 od,
+  ≤ 1.42 on-design incl. uncapped) — the tight-cap failure is the cap
+  biting into the bulk of the W_e distribution, not a failure of the
+  median as an uncapped-truth locator. The wave-9 observation
+  "medians 182–186 in both geometries" was a loose-cap artifact of b80
+  being ~2× the matched cap at g = 3.0.
+- **Prescription recommendation** (gap channel): primary =
+  **scale-aware capped mean**, `--boundary-dot-cap 14.04*g` [mm/seed]
+  (this wave: od z = −0.31; wave-9 on-design z = +1.65), which also has
+  ~3.6× smaller per-event variance than loose-cap b80 at g = 3.0
+  (1.75e5 vs 6.21e5). Secondary/diagnostic = loose-cap (≥ 80·(g/5.7)…∞)
+  median as a tuned-constant-free consistency check (truth-consistent
+  both geometries, mild −5% central tendency, unusable mean).
+- **Status**: A/B measured 2026-07-25 (this entry); item C (governed
+  absorber at scale + a=3.0 transport) runs on condor under the parallel
+  agent — jsonl verdict field left open for it.
