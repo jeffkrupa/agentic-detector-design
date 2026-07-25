@@ -1160,3 +1160,90 @@ it hits a variance wall. jsonl entry is the twin.)*
 - **Status**: A/B measured 2026-07-25 (this entry); item C (governed
   absorber at scale + a=3.0 transport) runs on condor under the parallel
   agent — jsonl verdict field left open for it.
+
+## Wave 12 — absorber governor scaling rule: off-design clamp bracket scan (LOCAL, measured)
+
+- **No new knob.** Gov binary `knob/dot-governor` @ 3b6d45f
+  (`build_gov_fwd`, mtime/size re-verified 1784915391625879590 ns /
+  434128 B before launch; never rebuilt). Question (pre-registered in
+  ledger.jsonl wave-12 BEFORE any run): is the governor's +9.7%
+  off-design excess (a=3.0: 2213.83 ± 47.18 vs own-FD truth
+  2018.05 ± 15.36, z = 3.95, wave-11) a clamp-scale mismatch curable by
+  a geometry-scaling rule, as the gap cap's was (cap ∝ g, wave-11 A)?
+  Predicted: (1) some (P,E) at a=3.0 within 2σ of truth; (2) monotone
+  controlling clamp with a fittable slope; (3) the rule backward-
+  consistent with P1000:E50 being matched at a=2.3.
+- **Runs** (LOCAL, `fidelity/wave12_scaling.py`; raw `wave12_runs/`
+  untracked; 28 units × n=2000 = 56k events, ~2.3 core-h, ≤2 concurrent,
+  0 failed/NaN rows): a=3.00 g=5.70, unsevered `-x 0 -y 0 -B 0 -f 0.2
+  -N 1e-3 -C 1000`, `-a 3.0:1`, event dumps on. P-axis (E=50):
+  P500/P700/P1300 s1–4; E-axis (P=1000): E35/E70 s1–4. The P1000:E50
+  reference reused from the wave-11 200k batch, never rerun. Adaptive
+  step (per the pre-registered stop-the-flat-axis rule): after the full
+  first bracket the E clamp controls the response while P is subdominant
+  and non-monotone, so the budget went to the live axis — **E65 added**
+  (s1–4; sits on the E ∝ a candidate 50·3.0/2.3 = 65.2) and E70 extended
+  to s1–8.
+- **Bracket table** (core L5–18 pooled per-event mean ± SE; od truth
+  2018.05 ± 15.36; var ratio vs the a=3.0 E50 reference var 6.42e8):
+  | variant | mean ± SE | z vs truth | median ± boot SE | var× |
+  |---|---|---|---|---|
+  | P500:E50 | 1879.3 ± 304.0 | −0.46 | 1984.7 ± 63.4 | 1.15 |
+  | P700:E50 | 1855.8 ± 420.5 | −0.39 | 2025.6 ± 70.9 | 2.20 |
+  | P1300:E50 | 1543.3 ± 729.2 | −0.65 | 2044.0 ± 92.5 | 6.63 |
+  | P1000:E35 | 1951.5 ± 577.2 | −0.12 | 2270.2 ± 89.3 | 4.15 |
+  | P1000:E65 | 1559.4 ± 587.5 | −0.78 | 1882.0 ± 76.3 | 4.30 |
+  | P1000:E70 (16k) | 1727.3 ± 313.1 | −0.93 | 1870.6 ± 58.4 | 2.44 |
+  | REF P1000:E50 (200k) | 2213.8 ± 56.7 | +3.3 | 2117.1 ± 17.3 | 1.00 |
+- **Mean estimator: variance-limited.** Pooled SEs 300–730 MeV at 8k
+  events vs the ~60 needed to discriminate the 196-MeV excess; every
+  variant is trivially within 2σ of truth (pred-1 vacuously true) and
+  neither axis is monotone in the mean (pred-2 FAILS as pre-registered:
+  P slope +0.58 ± 0.55, E slope −21.0 ± 13.8 MeV/unit). The mean cannot
+  bracket the matched clamp at local scale.
+- **Post-hoc robust estimators** (per-event median/tm5, bootstrap SEs,
+  wave-11-B precedent; reference recomputed from its own 200k dumps with
+  the same estimators): the **E clamp is the controlling clamp** — E-axis
+  median monotone 2270.2 → 2117.1 → 1882.0 → 1870.6 across E 35→50→65→70,
+  slope **−12.6 ± 2.4 MeV/unit (5.2σ)** (tm5: −12.5 ± 2.4, 5.2σ); the
+  P-axis moves only ~60 MeV over P500→P1300 and is non-monotone vs the
+  reference. Median-anchored matched value (anchor: target = truth ×
+  ref-median/ref-mean; assumes locally clamp-independent shape ratio —
+  stated assumption): **matched E = 64.6 ± 12.4** (tm5: 65.1 ± 12.6) ⇒
+  exponent **k = 0.97** (tm5 0.99), i.e. **E ∝ a**, prediction
+  50·(3.0/2.3) = 65.2 — the new E65 point sits right on it. Backward
+  consistency (pred-3): the rule anchors at the matched P1000:E50 at
+  a=2.3 by construction, the measured od exponent ≈ 1 makes E ∝ a a
+  measurement (not a fit choice among {1/a, const, a} — those are only
+  separated at 2.0/1.3σ by the mean fit, but the robust k pins 1), and
+  the sign matches the wave-10 on-design E-direction (looser E lowers
+  the mean: E50→E200 gave 1.082→0.868). The mean-based fits agree but
+  weakly (matched E = 58.8 ± 38.5, k = +0.61; matched P = 681 ± 646).
+- **Variance transport**: the candidate matched clamp costs real
+  variance — var(W_e) at E65 is 4.3× the E50 reference (E70 at 16k:
+  2.4×; single-seed spike sampling dominates the spread). Not a blowup
+  (the program's failure bar has been ~100×), but not free; must be
+  re-measured at scale.
+- **Verdict vs pre-registration** (measured): pred-1 PASS but vacuous at
+  local precision (mean variance-limited); pred-2 FAIL on the
+  pre-registered mean, PASS on the post-hoc robust estimators
+  (controlling clamp = E, monotone, 5.2σ slope); pred-3 PASS in the
+  measured-exponent sense (k ≈ 1 ⇒ E ∝ a). Net: the wave-11 od excess
+  behaves exactly like a clamp-scale mismatch with **E_cap ∝ a at fixed
+  P = 1000**, but the mean-level confirmation is beyond local reach.
+- **Deviations**: (i) E65 variant + E70 seeds 5–8 added mid-scan under
+  the pre-registered adaptive rule (P declared the flat/subdominant
+  axis); (ii) the robust-estimator block (test 5) is post-hoc and
+  labelled so in the summary; (iii) first `--analyze` OOM-killed by a
+  16 GB bootstrap index matrix on the 200k reference — fixed to a
+  chunked, size-adaptive bootstrap (analysis bug, no physics rerun);
+  (iv) units ran ~290 s not the projected ~450 s, so the added E-axis
+  units kept total ≈ 2.3 core-h, inside the ~2.5 budget.
+- **Status**: measured 2026-07-25, summary
+  `fidelity/wave12_scaling_summary.json`; awaiting human verdict.
+  Recommended confirming condor run (NOT submitted): wave-11-style
+  batch at a=3.0 with `--track-dot-cap 1000:65.2`, 15 seeds × 20k
+  (var 2.8e9 ⇒ pooled SE ≈ 96, 2σ-discriminates the 196-MeV excess),
+  plus a second lever arm (e.g. a=2.0, cap 1000:43.5, with its own
+  ±0.1 mm FD arms) to test the rule off the anchor, and an unscaled
+  E50 control at the second geometry.

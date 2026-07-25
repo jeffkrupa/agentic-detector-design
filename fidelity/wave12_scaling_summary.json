@@ -1,0 +1,618 @@
+{
+  "wave": 12,
+  "item": "absorber governor scaling-rule bracket scan (a=3.0)",
+  "knob_branch": "knob/dot-governor",
+  "knob_sha": "3b6d45f",
+  "binary": {
+    "binary_path": "/eos/home-j/jeffkrup/agentic/hepemshow-gov/build_gov_fwd/HepEmShow",
+    "binary_git_rev": "3b6d45f",
+    "binary_mtime_ns": 1784915391625879590,
+    "binary_size": 434128
+  },
+  "n_events_per_unit": 2000,
+  "seeds_per_variant": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "core_window_layers": [
+    5,
+    18
+  ],
+  "od_fd_truth_core": [
+    2018.0495457018242,
+    15.362877569225724
+  ],
+  "reference_P1000_E50_at_a3.0": {
+    "core_mean_seed_scatter": 2213.8297082818126,
+    "core_se_seed_scatter": 47.1822602449957,
+    "pooled_mean_W": 2213.829708281818,
+    "pooled_se_W": 56.65903497575112,
+    "pooled_var_W": 642049248.8766778,
+    "pooled_median_W": 2117.118960875339,
+    "n_events": 200000
+  },
+  "on_design_matched_P1000_E50": {
+    "core_mean_seed_scatter": 2233.68150912244,
+    "core_se_seed_scatter": 52.28707676643073,
+    "fd_truth": [
+      2233.677839040897,
+      14.75417071763103
+    ]
+  },
+  "note_errors": "seed-scatter SEs AND pooled per-event SEs both reported; window sums keep inter-layer covariance via per-seed sums; slope fits weight by the pooled per-event SE (stable at 4 seeds).",
+  "variants": {
+    "od_P500_E50": {
+      "P": 500.0,
+      "E": 50.0,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "n_failed_rows": 0,
+      "missing_seeds": [],
+      "core_mean_seed_scatter": 1879.2480251620632,
+      "core_se_seed_scatter": 288.9771060736381,
+      "per_seed_core_means": [
+        2103.5651241162664,
+        2155.333983863612,
+        1016.5311959190301,
+        2241.561796749344
+      ],
+      "z_vs_od_truth_seed_scatter": -0.47964279888269806,
+      "pooled_per_event": {
+        "n": 8000,
+        "mean_W": 1879.248025162071,
+        "se_W": 303.9865560735583,
+        "median_W": 1984.6993886702235,
+        "tm5_W": 2010.0824814291118,
+        "tm1_W": 2020.9446103293674,
+        "var_W": 739262610.187701,
+        "mean_T": 3870.6249544175635,
+        "se_T": 502.1550269332296,
+        "nonfinite": 0,
+        "seeds_with_events": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "seeds_without_events": [],
+        "z_pooled_vs_od_truth": -0.45602215206614505,
+        "var_ratio_vs_ref_P1000_E50": 1.1514110661777217
+      }
+    },
+    "od_P700_E50": {
+      "P": 700.0,
+      "E": 50.0,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "n_failed_rows": 0,
+      "missing_seeds": [],
+      "core_mean_seed_scatter": 1855.7934666135425,
+      "core_se_seed_scatter": 433.09301418859945,
+      "per_seed_core_means": [
+        2156.4090333874638,
+        2348.0952623335425,
+        563.8614584775294,
+        2354.8081122556346
+      ],
+      "z_vs_od_truth_seed_scatter": -0.3744093922862703,
+      "pooled_per_event": {
+        "n": 8000,
+        "mean_W": 1855.7934666135468,
+        "se_W": 420.5219470872058,
+        "median_W": 2025.633569344316,
+        "tm5_W": 2063.937280661516,
+        "tm1_W": 2081.8030558520795,
+        "var_W": 1414709663.8561177,
+        "mean_T": 4289.217897908236,
+        "se_T": 619.0136087113744,
+        "nonfinite": 0,
+        "seeds_with_events": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "seeds_without_events": [],
+        "z_pooled_vs_od_truth": -0.3855872703772108,
+        "var_ratio_vs_ref_P1000_E50": 2.203428578619597
+      }
+    },
+    "od_P1300_E50": {
+      "P": 1300.0,
+      "E": 50.0,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "n_failed_rows": 0,
+      "missing_seeds": [],
+      "core_mean_seed_scatter": 1543.3410968866872,
+      "core_se_seed_scatter": 801.1916469148517,
+      "per_seed_core_means": [
+        2105.8416267864764,
+        2439.8360306608397,
+        -847.2485600258881,
+        2474.9352901253205
+      ],
+      "z_vs_od_truth_seed_scatter": -0.5923940967639852,
+      "pooled_per_event": {
+        "n": 8000,
+        "mean_W": 1543.3410968866951,
+        "se_W": 729.2357717826084,
+        "median_W": 2044.0212144843945,
+        "tm5_W": 2084.1779837585977,
+        "tm1_W": 2086.644779769927,
+        "var_W": 4254278486.779012,
+        "mean_T": 4449.702383246701,
+        "se_T": 943.3000405679188,
+        "nonfinite": 0,
+        "seeds_with_events": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "seeds_without_events": [],
+        "z_pooled_vs_od_truth": -0.6508226270735612,
+        "var_ratio_vs_ref_P1000_E50": 6.626093705774519
+      }
+    },
+    "od_P1000_E35": {
+      "P": 1000.0,
+      "E": 35.0,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "n_failed_rows": 0,
+      "missing_seeds": [],
+      "core_mean_seed_scatter": 1951.493870925304,
+      "core_se_seed_scatter": 624.38824491291,
+      "per_seed_core_means": [
+        2331.0144528125443,
+        2706.9920058668426,
+        95.69473205135296,
+        2672.2742929704764
+      ],
+      "z_vs_od_truth_seed_scatter": -0.1065611634585969,
+      "pooled_per_event": {
+        "n": 8000,
+        "mean_W": 1951.4938709253092,
+        "se_W": 577.1911281506339,
+        "median_W": 2270.2109684822954,
+        "tm5_W": 2312.3823856989757,
+        "tm1_W": 2329.262622158633,
+        "var_W": 2665196787.326412,
+        "mean_T": 5202.570079716375,
+        "se_T": 781.4900163571341,
+        "nonfinite": 0,
+        "seeds_with_events": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "seeds_without_events": [],
+        "z_pooled_vs_od_truth": -0.11526877068819037,
+        "var_ratio_vs_ref_P1000_E50": 4.151078428935803
+      }
+    },
+    "od_P1000_E65": {
+      "P": 1000.0,
+      "E": 65.0,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "n_failed_rows": 0,
+      "missing_seeds": [],
+      "core_mean_seed_scatter": 1559.4269365218254,
+      "core_se_seed_scatter": 637.6528820577488,
+      "per_seed_core_means": [
+        1994.3686927055307,
+        2345.345740598506,
+        -340.79430036948224,
+        2238.787613152747
+      ],
+      "z_vs_od_truth_seed_scatter": -0.7190268760288736,
+      "pooled_per_event": {
+        "n": 8000,
+        "mean_W": 1559.426936521826,
+        "se_W": 587.4927110483275,
+        "median_W": 1881.9525522841045,
+        "tm5_W": 1922.8006892112578,
+        "tm1_W": 1938.0057817032725,
+        "var_W": 2761181484.2793083,
+        "mean_T": 3830.5630035195263,
+        "se_T": 788.6152681955152,
+        "nonfinite": 0,
+        "seeds_with_events": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "seeds_without_events": [],
+        "z_pooled_vs_od_truth": -0.7803771414748091,
+        "var_ratio_vs_ref_P1000_E50": 4.300575834502167
+      }
+    },
+    "od_P1000_E70": {
+      "P": 1000.0,
+      "E": 70.0,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "n_failed_rows": 0,
+      "missing_seeds": [],
+      "core_mean_seed_scatter": 1727.3276720530903,
+      "core_se_seed_scatter": 313.47533177434485,
+      "per_seed_core_means": [
+        1957.7885132530148,
+        2308.657740268562,
+        -379.5579425342089,
+        2194.4349072713126,
+        1511.9666604864296,
+        1928.2362315102841,
+        2229.5715429595803,
+        2067.523723209747
+      ],
+      "z_vs_od_truth_seed_scatter": -0.926303739771659,
+      "pooled_per_event": {
+        "n": 16000,
+        "mean_W": 1727.3276720530973,
+        "se_W": 313.09833880350743,
+        "median_W": 1870.5517540485582,
+        "tm5_W": 1926.4740032182565,
+        "tm1_W": 1964.1292536872063,
+        "var_W": 1568489116.184255,
+        "mean_T": 3579.369963505381,
+        "se_T": 484.3414210004327,
+        "nonfinite": 0,
+        "seeds_with_events": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "seeds_without_events": [],
+        "z_pooled_vs_od_truth": -0.9274163990273974,
+        "var_ratio_vs_ref_P1000_E50": 2.4429420623549767
+      }
+    }
+  },
+  "tests": {
+    "1_controlling_clamp_and_slope": {
+      "description": "core L5-18 pooled mean vs clamp value on each axis (reference P1000:E50 from wave-11 200k included); WLS slope d(mean)/d(clamp); the controlling clamp is the axis with the larger |slope|*bracket-width significance.",
+      "axes": {
+        "P": {
+          "points": [
+            {
+              "clamp": 500.0,
+              "mean": 1879.248025162071,
+              "se": 303.9865560735583
+            },
+            {
+              "clamp": 700.0,
+              "mean": 1855.7934666135468,
+              "se": 420.5219470872058
+            },
+            {
+              "clamp": 1000.0,
+              "mean": 2213.829708281818,
+              "se": 56.65903497575112
+            },
+            {
+              "clamp": 1300.0,
+              "mean": 1543.3410968866951,
+              "se": 729.2357717826084
+            }
+          ],
+          "slope_MeV_per_unit": 0.5847056567171912,
+          "slope_se": 0.5543771802216015,
+          "intercept": 1619.7855810981582,
+          "intercept_se": 546.1629529283971,
+          "slope_significance": 1.054707296002816,
+          "move_over_bracket_MeV": 467.764525373753,
+          "monotone": false
+        },
+        "E": {
+          "points": [
+            {
+              "clamp": 35.0,
+              "mean": 1951.4938709253092,
+              "se": 577.1911281506339
+            },
+            {
+              "clamp": 50.0,
+              "mean": 2213.829708281818,
+              "se": 56.65903497575112
+            },
+            {
+              "clamp": 65.0,
+              "mean": 1559.426936521826,
+              "se": 587.4927110483275
+            },
+            {
+              "clamp": 70.0,
+              "mean": 1727.3276720530973,
+              "se": 313.09833880350743
+            }
+          ],
+          "slope_MeV_per_unit": -21.04271300970026,
+          "slope_se": 13.758771275629302,
+          "intercept": 3255.629504527785,
+          "intercept_se": 698.6293014016949,
+          "slope_significance": 1.529403504728136,
+          "move_over_bracket_MeV": -736.4949553395091,
+          "monotone": false
+        }
+      },
+      "controlling_axis": "E"
+    },
+    "2_matched_clamp_and_rule": {
+      "description": "interpolate the clamp value where the fitted line crosses the od FD truth 2018.05 +- 15.36; exponent k from (matched at a=3.0) vs (matched 1000:50 at a=2.3): clamp ~ a^k; nearest simple rules quoted. Backward consistency = the rule evaluated at a=2.3 returns the wave-11-matched clamp by construction (anchor); the substantive check is whether a SIMPLE rule (k in {-1, 0, 1}) is consistent with the matched value within its interpolation error.",
+      "matched": {
+        "P": {
+          "matched_clamp": 681.135815992793,
+          "matched_clamp_se": 646.3398091158343,
+          "anchor_at_a2.3": 1000.0,
+          "exponent_k": -1.4451975216225195,
+          "simple_rules": {
+            "clamp ~ 1/a": {
+              "predicted_clamp_at_a3.0": 766.6666666666666,
+              "consistent_within_matched_se": true
+            },
+            "clamp const": {
+              "predicted_clamp_at_a3.0": 1000.0,
+              "consistent_within_matched_se": true
+            },
+            "clamp ~ a": {
+              "predicted_clamp_at_a3.0": 1304.3478260869565,
+              "consistent_within_matched_se": true
+            }
+          }
+        },
+        "E": {
+          "matched_clamp": 58.81275661819184,
+          "matched_clamp_se": 38.461632234508656,
+          "anchor_at_a2.3": 50.0,
+          "exponent_k": 0.6109666581784083,
+          "simple_rules": {
+            "clamp ~ 1/a": {
+              "predicted_clamp_at_a3.0": 38.33333333333333,
+              "consistent_within_matched_se": true
+            },
+            "clamp const": {
+              "predicted_clamp_at_a3.0": 50.0,
+              "consistent_within_matched_se": true
+            },
+            "clamp ~ a": {
+              "predicted_clamp_at_a3.0": 65.21739130434783,
+              "consistent_within_matched_se": true
+            }
+          }
+        }
+      }
+    },
+    "3_verdict_vs_preregistration": {
+      "description": "pre-registered: (1) some variant within 2 sigma of the od FD truth; (2) monotone controlling axis with a fittable slope; (3) rule backward-consistent with the on-design match.",
+      "variant_z_vs_truth": {
+        "od_P500_E50": -0.45602215206614505,
+        "od_P700_E50": -0.3855872703772108,
+        "od_P1300_E50": -0.6508226270735612,
+        "od_P1000_E35": -0.11526877068819037,
+        "od_P1000_E65": -0.7803771414748091,
+        "od_P1000_E70": -0.9274163990273974
+      },
+      "pred1_some_variant_within_2sigma": true,
+      "pred2_controlling_axis_monotone": false,
+      "pred2_slope_significance": 1.529403504728136
+    },
+    "4_variance_transport": {
+      "description": "pooled per-event var(W_e) per variant, ratio vs the wave-11 P1000:E50 reference at a=3.0 (6.42e+08).",
+      "ref_var_W": 642049248.8766778,
+      "per_variant": {
+        "od_P500_E50": {
+          "var_W": 739262610.187701,
+          "ratio_vs_ref": 1.1514110661777217
+        },
+        "od_P700_E50": {
+          "var_W": 1414709663.8561177,
+          "ratio_vs_ref": 2.203428578619597
+        },
+        "od_P1300_E50": {
+          "var_W": 4254278486.779012,
+          "ratio_vs_ref": 6.626093705774519
+        },
+        "od_P1000_E35": {
+          "var_W": 2665196787.326412,
+          "ratio_vs_ref": 4.151078428935803
+        },
+        "od_P1000_E65": {
+          "var_W": 2761181484.2793083,
+          "ratio_vs_ref": 4.300575834502167
+        },
+        "od_P1000_E70": {
+          "var_W": 1568489116.184255,
+          "ratio_vs_ref": 2.4429420623549767
+        }
+      }
+    },
+    "5_posthoc_robust_estimators": {
+      "description": "POST-HOC (not pre-registered): per-event median and 5%-trimmed-mean vs clamp value, bootstrap SEs (10k resamples); wave-11 P1000:E50 reference recomputed from its own event npz with the same estimators. Median-anchored matched clamp assumes a locally clamp-independent median/mean ratio (taken at the reference) -- stated assumption, condor-scale mean confirmation still required.",
+      "post_hoc": true,
+      "estimators": {
+        "REF_P1000_E50": {
+          "median": 2117.118960875339,
+          "median_se_boot": 17.26321814427156,
+          "tm5": 2173.3662476526506,
+          "tm5_se_boot": 16.83042998632653,
+          "mean": 2213.829708281818,
+          "n_events": 200000
+        },
+        "od_P500_E50": {
+          "median": 1984.6993886702235,
+          "median_se_boot": 63.443169302844964,
+          "tm5": 2010.0824814291118,
+          "tm5_se_boot": 65.51875825460625,
+          "n_events": 8000
+        },
+        "od_P700_E50": {
+          "median": 2025.633569344316,
+          "median_se_boot": 70.92975937303716,
+          "tm5": 2063.937280661516,
+          "tm5_se_boot": 73.6547694168189,
+          "n_events": 8000
+        },
+        "od_P1300_E50": {
+          "median": 2044.0212144843945,
+          "median_se_boot": 92.48953876395474,
+          "tm5": 2084.1779837585977,
+          "tm5_se_boot": 90.0031698552222,
+          "n_events": 8000
+        },
+        "od_P1000_E35": {
+          "median": 2270.2109684822954,
+          "median_se_boot": 89.27364816561474,
+          "tm5": 2312.3823856989757,
+          "tm5_se_boot": 84.31616374120895,
+          "n_events": 8000
+        },
+        "od_P1000_E65": {
+          "median": 1881.9525522841045,
+          "median_se_boot": 76.2894064606543,
+          "tm5": 1922.8006892112578,
+          "tm5_se_boot": 82.46669243419632,
+          "n_events": 8000
+        },
+        "od_P1000_E70": {
+          "median": 1870.5517540485582,
+          "median_se_boot": 58.39178994293462,
+          "tm5": 1926.4740032182565,
+          "tm5_se_boot": 58.50019010827941,
+          "n_events": 16000
+        }
+      },
+      "e_axis_median": {
+        "points": [
+          {
+            "E": 35.0,
+            "median": 2270.2109684822954,
+            "se_boot": 89.27364816561474
+          },
+          {
+            "E": 50.0,
+            "median": 2117.118960875339,
+            "se_boot": 17.26321814427156
+          },
+          {
+            "E": 65.0,
+            "median": 1881.9525522841045,
+            "se_boot": 76.2894064606543
+          },
+          {
+            "E": 70.0,
+            "median": 1870.5517540485582,
+            "se_boot": 58.39178994293462
+          }
+        ],
+        "monotone": true,
+        "slope_MeV_per_unit": -12.608674116138532,
+        "slope_se": 2.4021665976279754,
+        "slope_significance": 5.248875797619114,
+        "anchor_target": 1929.8914190229657,
+        "matched_E": 64.63229304681998,
+        "matched_E_se": 12.3685577471333,
+        "exponent_k": 0.9660824782171339,
+        "E_prop_a_prediction": 65.21739130434783
+      },
+      "e_axis_tm5": {
+        "points": [
+          {
+            "E": 35.0,
+            "tm5": 2312.3823856989757,
+            "se_boot": 84.31616374120895
+          },
+          {
+            "E": 50.0,
+            "tm5": 2173.3662476526506,
+            "se_boot": 16.83042998632653
+          },
+          {
+            "E": 65.0,
+            "tm5": 1922.8006892112578,
+            "se_boot": 82.46669243419632
+          },
+          {
+            "E": 70.0,
+            "tm5": 1926.4740032182565,
+            "se_boot": 58.50019010827941
+          }
+        ],
+        "monotone": false,
+        "slope_MeV_per_unit": -12.480901977031248,
+        "slope_se": 2.4040178748868692,
+        "slope_significance": 5.19168434952614,
+        "anchor_target": 1981.164473632035,
+        "matched_E": 65.10144706836492,
+        "matched_E_se": 12.597653475920225,
+        "exponent_k": 0.9933030764008244,
+        "E_prop_a_prediction": 65.21739130434783
+      },
+      "p_axis_median": {
+        "points": [
+          {
+            "P": 500.0,
+            "median": 1984.6993886702235,
+            "se_boot": 63.443169302844964
+          },
+          {
+            "P": 700.0,
+            "median": 2025.633569344316,
+            "se_boot": 70.92975937303716
+          },
+          {
+            "P": 1000.0,
+            "median": 2117.118960875339,
+            "se_boot": 17.26321814427156
+          },
+          {
+            "P": 1300.0,
+            "median": 2044.0212144843945,
+            "se_boot": 92.48953876395474
+          }
+        ],
+        "monotone": false
+      }
+    }
+  },
+  "complete": true
+}
