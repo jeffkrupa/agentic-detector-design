@@ -1,0 +1,109 @@
+# HTCondor submit file for the wave-13 absorber E_cap~a scaling-rule
+# confirmation (fidelity loop; pre-registered ledger.jsonl wave-13).
+#
+# One job per (config, seed): 60 jobs x 20000 events (1.2M events total,
+# ~75 CPU-h). abs_a30_scaled s1-15, abs_a20_scaled s1-15, abs_a20_ctrl s1-10,
+# abs_fd_a20_plus/minus s1-10 each. No sub-job splitting: the n=1000 timing
+# smokes project 20k walls well inside the 10800 s in-process timeout at both
+# a=2.0 and a=3.0 (< 8500 s split threshold).
+# The runner appends its per-unit JSONL directly to EOS
+# (fidelity/wave13_runs/<config>_s<seed>.jsonl); EOS writes need the kerberos
+# credential (MY.SendCredential). Condor log/out/err live on AFS (EOS-hosted
+# condor logs are unreliable).
+#
+# NOTE (CERN gotcha): standard batch schedds REJECT any /eos path in the
+# submit context, so submit from an AFS cwd and keep the executable on AFS.
+# The wrapper cd's into the EOS repo at runtime on the worker.
+#
+# Submit:
+#   cd /afs/cern.ch/user/j/jekrupa/condor_bin
+#   condor_submit /eos/user/j/jeffkrup/agentic/agentic-detector-design/condor/wave13_scaleval.sub
+universe   = vanilla
+executable = /afs/cern.ch/user/j/jekrupa/condor_bin/run_wave13_scaleval.sh
+
+arguments  = --config $(CONFIG) --seed $(SEED) --n-events 20000
+
+# Forward the kerberos credential so the worker can write to EOS.
+MY.SendCredential = true
+
+TAG = wave13_scaleval
+log    = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).log
+output = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).out
+error  = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).err
+
+# Outputs go directly to EOS; no condor file transfer. The per-event dump
+# (HEPEMSHOW_EVENT_DUMP, ~35 MB for governed AD configs) goes to the job-local
+# tmp and is reduced to a small npz before the job ends.
+should_transfer_files = NO
+
+# Single-threaded forward-sim job.
+request_cpus   = 1
+request_memory = 2GB
+request_disk   = 2GB
+
+# "workday" = 8 h max walltime; the in-process sim timeout is 10800 s,
+# leaving ample margin for slow nodes + EOS latency.
++JobFlavour = "workday"
+
+queue CONFIG,SEED from (
+abs_a30_scaled, 1
+abs_a30_scaled, 2
+abs_a30_scaled, 3
+abs_a30_scaled, 4
+abs_a30_scaled, 5
+abs_a30_scaled, 6
+abs_a30_scaled, 7
+abs_a30_scaled, 8
+abs_a30_scaled, 9
+abs_a30_scaled, 10
+abs_a30_scaled, 11
+abs_a30_scaled, 12
+abs_a30_scaled, 13
+abs_a30_scaled, 14
+abs_a30_scaled, 15
+abs_a20_scaled, 1
+abs_a20_scaled, 2
+abs_a20_scaled, 3
+abs_a20_scaled, 4
+abs_a20_scaled, 5
+abs_a20_scaled, 6
+abs_a20_scaled, 7
+abs_a20_scaled, 8
+abs_a20_scaled, 9
+abs_a20_scaled, 10
+abs_a20_scaled, 11
+abs_a20_scaled, 12
+abs_a20_scaled, 13
+abs_a20_scaled, 14
+abs_a20_scaled, 15
+abs_a20_ctrl, 1
+abs_a20_ctrl, 2
+abs_a20_ctrl, 3
+abs_a20_ctrl, 4
+abs_a20_ctrl, 5
+abs_a20_ctrl, 6
+abs_a20_ctrl, 7
+abs_a20_ctrl, 8
+abs_a20_ctrl, 9
+abs_a20_ctrl, 10
+abs_fd_a20_plus, 1
+abs_fd_a20_plus, 2
+abs_fd_a20_plus, 3
+abs_fd_a20_plus, 4
+abs_fd_a20_plus, 5
+abs_fd_a20_plus, 6
+abs_fd_a20_plus, 7
+abs_fd_a20_plus, 8
+abs_fd_a20_plus, 9
+abs_fd_a20_plus, 10
+abs_fd_a20_minus, 1
+abs_fd_a20_minus, 2
+abs_fd_a20_minus, 3
+abs_fd_a20_minus, 4
+abs_fd_a20_minus, 5
+abs_fd_a20_minus, 6
+abs_fd_a20_minus, 7
+abs_fd_a20_minus, 8
+abs_fd_a20_minus, 9
+abs_fd_a20_minus, 10
+)

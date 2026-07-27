@@ -1247,3 +1247,38 @@ it hits a variance wall. jsonl entry is the twin.)*
   plus a second lever arm (e.g. a=2.0, cap 1000:43.5, with its own
   ±0.1 mm FD arms) to test the rule off the anchor, and an unscaled
   E50 control at the second geometry.
+
+## Wave 13 — absorber E_cap ∝ a scaling-rule confirmation (condor, SUBMITTED)
+
+- **No new knob.** Gov binary `knob/dot-governor` @ 3b6d45f
+  (`build_gov_fwd`, mtime 2026-07-24 19:49:51 / size 434128 B
+  re-verified before submission; `--track-dot-cap` accepted, 10-event
+  smoke with `1000:65.2` clean; never rebuilt). This is the wave-12
+  recommended confirming batch, pre-registered in ledger.jsonl wave-13.
+  Rule under test: **E_cap = 50·a/2.3 at fixed P = 1000** (E ∝ a).
+- **Batch** (`fidelity/wave13_scaleval.py`, condor cluster **3912920**,
+  60 jobs × 20k = **1.2M events**, ~75 CPU-h; forward mode, unsevered
+  `-x 0 -y 0 -B 0 -f 0.2 -N 1e-3 -C 1000`, no `--rng-lineage`, absorber
+  seed `-a <a>:1`, HEPEMSHOW_EVENT_DUMP on for governed AD configs):
+  - `abs_a30_scaled` s1–15, a=3.00 g=5.70, `--track-dot-cap 1000:65.2`;
+  - `abs_a20_scaled` s1–15, a=2.00 g=5.70, `--track-dot-cap 1000:43.5`;
+  - `abs_a20_ctrl` s1–10, a=2.00, `--track-dot-cap 1000:50` (UNSCALED
+    control — tests that the rule is load-bearing, not a null);
+  - `abs_fd_a20_plus`/`abs_fd_a20_minus` s1–10 each, a=2.1/1.9,
+    CANONICAL severed `-x 2 -y 1 -B 1`, energy-seeded dot slot, primal-
+    only FD arms (denom (2.1−1.9)=0.2) → fresh a=2.0 FD truth.
+  Reused truths (no rerun): a=3.0 FD 2018.05 ± 15.36 (wave-11 abs_fd_od
+  arms); a=2.3 on-design 1.00 anchor (wave-11 abs_gov_val).
+- **Split decision: none.** n=1000 timing smokes projected 20k walls
+  well inside the 8500 s split threshold and the 10800 s in-process
+  timeout: a=2.0 174.8 s → ~3496 s; a=3.0 (only config ≥2.5 mm)
+  160.8 s → ~3216 s. All 60 jobs kept at 20k/job.
+- **Pre-registered signatures** (predicted_signature, ledger.jsonl
+  wave-13): (1) a=3.0 scaled core L5–18 within 2σ of 2018.05 ± 15.36
+  (unscaled was +9.7%, z=3.95); (2) a=2.0 scaled core within 2σ of its
+  own FD arms; (3) a=2.0 unscaled E50 control OFF (>2σ); (4) a=2.3 E50
+  = established 1.00 anchor.
+- **Status**: submitted 2026-07-27, cluster 3912920, 60 idle at submit
+  (one `condor_q -totals`). Analyze after completion:
+  `python -u -m fidelity.wave13_scaleval --analyze` →
+  `fidelity/wave13_scaleval_summary.json`. Awaiting jobs + human verdict.
