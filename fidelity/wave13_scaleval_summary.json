@@ -1,0 +1,433 @@
+{
+  "wave": 13,
+  "item": "absorber E_cap ~ a scaling-rule confirmation (3-geometry batch)",
+  "knob_branch": "knob/dot-governor",
+  "knob_sha": "3b6d45f",
+  "rule": "E_cap = 50 * a / 2.3 at fixed P = 1000 (E propto a)",
+  "caps": {
+    "abs_a30_scaled": "--track-dot-cap 1000:65.2",
+    "abs_a20_scaled": "--track-dot-cap 1000:43.5",
+    "abs_a20_ctrl": "--track-dot-cap 1000:50"
+  },
+  "binary": {
+    "binary_path": "/eos/home-j/jeffkrup/agentic/hepemshow-gov/build_gov_fwd/HepEmShow",
+    "binary_git_rev": "3b6d45f",
+    "binary_mtime_ns": 1784915391625879590,
+    "binary_size": 434128
+  },
+  "n_events_per_unit": 20000,
+  "core_window_layers": [
+    5,
+    18
+  ],
+  "truth_a30_core": [
+    2018.0495457018242,
+    15.362877569225724
+  ],
+  "unscaled_a30_reference": {
+    "core_mean": 2213.8297082818126,
+    "core_se": 47.1822602449957,
+    "z_vs_truth": 3.95,
+    "pct_excess": 9.7,
+    "note": "wave-11/12 a=3.0 --track-dot-cap 1000:50 (E50, unscaled)"
+  },
+  "note_errors": "seed-scatter SEs unless labelled pooled (per-event); window sums keep inter-layer covariance via per-seed sums; a=2.0 FD is unpaired (E+ - E-)/0.2 from the a=2.1/1.9 primal arms, seed-scatter errors.",
+  "configs": {
+    "abs_a30_scaled": {
+      "a_mm": 3.0,
+      "severed": false,
+      "extra_args": [
+        "--track-dot-cap",
+        "1000:65.2"
+      ],
+      "n_ok_seeds": 15,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "missing_seeds": [],
+      "n_failed_rows": 0,
+      "mean_wall_s": 6734.786851483517
+    },
+    "abs_a20_scaled": {
+      "a_mm": 2.0,
+      "severed": false,
+      "extra_args": [
+        "--track-dot-cap",
+        "1000:43.5"
+      ],
+      "n_ok_seeds": 15,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "missing_seeds": [],
+      "n_failed_rows": 0,
+      "mean_wall_s": 5910.680755686323
+    },
+    "abs_a20_ctrl": {
+      "a_mm": 2.0,
+      "severed": false,
+      "extra_args": [
+        "--track-dot-cap",
+        "1000:50"
+      ],
+      "n_ok_seeds": 10,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "missing_seeds": [],
+      "n_failed_rows": 0,
+      "mean_wall_s": 6385.342215359904
+    },
+    "abs_fd_a20_plus": {
+      "a_mm": 2.1,
+      "severed": true,
+      "extra_args": [],
+      "n_ok_seeds": 10,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "missing_seeds": [],
+      "n_failed_rows": 0,
+      "mean_wall_s": 7089.246779617091
+    },
+    "abs_fd_a20_minus": {
+      "a_mm": 1.9,
+      "severed": true,
+      "extra_args": [],
+      "n_ok_seeds": 10,
+      "ok_seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "missing_seeds": [],
+      "n_failed_rows": 0,
+      "mean_wall_s": 5997.847236829597
+    }
+  },
+  "tests": {
+    "1_abs_a30_scaled_vs_truth": {
+      "description": "abs_a30_scaled (a=3.0, cap --track-dot-cap 1000:65.2) core L5-18 mean vs a=3.0 FD truth 2018.05 +- 15.36; pre-registered: within 2 sigma (unscaled E50 was +9.7%, z=3.95). Seed-scatter AND pooled per-event.",
+      "truth": [
+        2018.0495457018242,
+        15.362877569225724
+      ],
+      "unscaled_reference": {
+        "core_mean": 2213.8297082818126,
+        "core_se": 47.1822602449957,
+        "z_vs_truth": 3.95,
+        "pct_excess": 9.7,
+        "note": "wave-11/12 a=3.0 --track-dot-cap 1000:50 (E50, unscaled)"
+      },
+      "core_mean_seed_scatter": 1947.5407715065087,
+      "core_se_seed_scatter": 61.101784865296786,
+      "per_seed_core_means": [
+        2022.699329060044,
+        2217.062499502933,
+        1745.116481343249,
+        1981.087022065633,
+        2272.914852902769,
+        2047.383163641745,
+        2011.8288245029821,
+        1972.501012175366,
+        2076.5982486356797,
+        2180.9717652169847,
+        1303.3172217196259,
+        1789.7872203710929,
+        1941.1453120054798,
+        1857.575004432502,
+        1793.1236150215418
+      ],
+      "n_ok_seeds": 15,
+      "pooled_per_event": {
+        "n": 300000,
+        "mean_W": 1947.5407715065078,
+        "se_W": 63.49207956251327,
+        "median_W": 1943.4579695213156,
+        "tm5_W": 1993.8597423639121,
+        "tm1_W": 2017.1298562571722,
+        "var_W": 1209373250.1517544,
+        "mean_T": 4144.665995320569,
+        "se_T": 124.09577750161952,
+        "nonfinite": 0,
+        "seeds_with_events": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "seeds_without_events": []
+      },
+      "z_seed_scatter_vs_truth": -1.1191239982359935,
+      "pass_within_2sigma_seed_scatter": true,
+      "z_pooled_vs_truth": -1.0793654227656244,
+      "pass_within_2sigma_pooled": true
+    },
+    "2_abs_a20_scaled_vs_own_fd": {
+      "description": "abs_a20_scaled (a=2.0, cap --track-dot-cap 1000:43.5) core L5-18 mean vs its own FD ((E+ - E-)/0.2 from a=2.1/1.9 arms, UNPAIRED, seed-scatter); pre-registered: within 2 sigma. The a=2.0 FD truth is itself a reported result.",
+      "fd_a20_core": [
+        2119.743737833194,
+        14.077977739242954
+      ],
+      "fd_a20_arms": {
+        "plus_seeds": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "minus_seeds": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "plus_core": [
+          2626.1440246940497,
+          2.3855361972589977
+        ],
+        "minus_core": [
+          2202.195277127411,
+          1.4955919699677072
+        ]
+      },
+      "core_mean_seed_scatter": 2123.6120573462645,
+      "core_se_seed_scatter": 42.67387864300306,
+      "per_seed_core_means": [
+        1886.0474355196582,
+        2041.260820050497,
+        2089.2959492278137,
+        2178.27289222942,
+        2046.326284358439,
+        2146.751414667704,
+        2024.815942959467,
+        2160.640203821577,
+        2101.659798492601,
+        2124.387599593533,
+        2218.06605801911,
+        2041.964817563315,
+        2454.867971031781,
+        1880.680029707671,
+        2459.14364295138
+      ],
+      "n_ok_seeds": 15,
+      "pooled_per_event": {
+        "n": 300000,
+        "mean_W": 2123.6120573462626,
+        "se_W": 58.21517464055512,
+        "median_W": 1951.5539632057084,
+        "tm5_W": 2081.332912642941,
+        "tm1_W": 2109.6388735657074,
+        "var_W": 1016701967.5290997,
+        "mean_T": 8234.519606720642,
+        "se_T": 148.59561683798313,
+        "nonfinite": 0,
+        "seeds_with_events": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "seeds_without_events": []
+      },
+      "z_seed_scatter_vs_fd": 0.08608497542914369,
+      "pass_within_2sigma_seed_scatter": true,
+      "z_pooled_vs_fd": 0.06458695118111556,
+      "pass_within_2sigma_pooled": true
+    },
+    "3_abs_a20_ctrl_off": {
+      "description": "abs_a20_ctrl (a=2.0, UNSCALED cap --track-dot-cap 1000:50) core L5-18 mean vs the SAME a=2.0 FD; pre-registered: OFF (>2 sigma) => the E_cap~a rule is load-bearing, not a null. Reports the scaled-vs-ctrl delta.",
+      "core_mean_seed_scatter": 2026.081859619094,
+      "core_se_seed_scatter": 26.972479407863936,
+      "per_seed_core_means": [
+        1832.9966758035687,
+        1990.1537971298394,
+        2040.0693346855342,
+        2128.663586651554,
+        1984.855293947233,
+        2094.0247953704697,
+        1978.3881523279122,
+        2102.1801906032742,
+        2045.786263679266,
+        2063.700505992288
+      ],
+      "n_ok_seeds": 10,
+      "pooled_per_event": {
+        "n": 200000,
+        "mean_W": 2026.0818596190927,
+        "se_W": 52.678805821155386,
+        "median_W": 1903.3434049935925,
+        "tm5_W": 2032.415306532744,
+        "tm1_W": 2068.96713829486,
+        "var_W": 555011316.5485989,
+        "mean_T": 7729.865695899165,
+        "se_T": 154.15055589473084,
+        "nonfinite": 0,
+        "seeds_with_events": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "seeds_without_events": []
+      },
+      "z_seed_scatter_vs_fd": -3.0784121769595316,
+      "off_beyond_2sigma_seed_scatter": true,
+      "z_pooled_vs_fd": -1.7177004836501857,
+      "off_beyond_2sigma_pooled": false,
+      "delta_ctrl_minus_scaled_pooled": [
+        -97.53019772716993,
+        78.511547820517,
+        -1.2422401600097215
+      ],
+      "delta_ctrl_minus_scaled_seed_scatter": [
+        -97.53019772717039,
+        50.483408797796095,
+        -1.9319257563967862
+      ]
+    },
+    "4_layer_sum_totals": {
+      "description": "layer-sum (L0-49) totals for all configs. The governor totals-bias is a measurement (it clamps state carriers, not crossing generators). Reported, not headlined (PROTOCOL: absorber totals are tail-noise-dominated).",
+      "fd_truth_abs_total_on_design_a2.3": [
+        1050.8,
+        20.2
+      ],
+      "abs_a30_scaled": {
+        "key": "mean_dE",
+        "n_seeds": 15,
+        "mean": 4144.66599532057,
+        "se": 116.00077433941809
+      },
+      "abs_a20_scaled": {
+        "key": "mean_dE",
+        "n_seeds": 15,
+        "mean": 8234.519606720645,
+        "se": 141.87963182311216
+      },
+      "abs_a20_ctrl": {
+        "key": "mean_dE",
+        "n_seeds": 10,
+        "mean": 7729.865695899169,
+        "se": 185.81366798531116
+      },
+      "abs_fd_a20_plus": {
+        "key": "mean_E",
+        "n_seeds": 10,
+        "mean": 9046.888841769285,
+        "se": 1.2432121815375885
+      },
+      "abs_fd_a20_minus": {
+        "key": "mean_E",
+        "n_seeds": 10,
+        "mean": 8714.203695662585,
+        "se": 1.3084020131282545
+      },
+      "fd_a20_total_derivative": [
+        1663.4257305334995,
+        9.024262236163018
+      ],
+      "abs_a20_scaled_total_over_fd_a20": [
+        4.950338001612877,
+        0.08942178383794382
+      ],
+      "abs_a20_ctrl_total_over_fd_a20": [
+        4.646955709540467,
+        0.11451487393227043
+      ]
+    }
+  },
+  "complete": true
+}
