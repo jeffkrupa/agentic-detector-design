@@ -1,0 +1,74 @@
+# HTCondor submit file for the WAVE 15 Fisher-info optimization pre-flight
+# (fidelity/OPTIMIZATION_PLAN.md §3, ledger wave-15).
+#
+# One job per (profile, role, seed): 28 units, 20000 events each (~28 CPU-h,
+# the pre-registered ~20-30 job / ~20 CPU-h pre-flight budget). AD units for
+# P0/P3 additionally write the HEPEMSHOW_EVENT_DUMP per-event sidecar for the
+# covariance check. The experiment appends per-unit JSONL to EOS
+# (fidelity/preflight_runs/<profile>_<role>_s<seed>.jsonl) + dumps under
+# fidelity/preflight_runs/dumps/; EOS writes need the kerberos credential
+# (MY.SendCredential). Condor log/out/err live on AFS.
+#
+# NOTE (CERN gotcha): standard batch schedds REJECT any /eos path in the submit
+# context, so submit from an AFS cwd and keep the executable on AFS. The wrapper
+# cd's into the EOS repo at runtime on the worker.
+#
+# Submit:
+#   cd /afs/cern.ch/user/j/jekrupa/condor_bin
+#   condor_submit /eos/user/j/jeffkrup/agentic/agentic-detector-design/condor/preflight.sub
+universe   = vanilla
+executable = /afs/cern.ch/user/j/jekrupa/condor_bin/run_preflight.sh
+
+arguments  = --profile $(PROFILE) --role $(ROLE) --seed $(SEED) --n-events 20000
+
+# Forward the kerberos credential so the worker can write to EOS.
+MY.SendCredential = true
+
+TAG = preflight
+log    = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).log
+output = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).out
+error  = /afs/cern.ch/user/j/jekrupa/condor_logs/$(TAG).$(ClusterId).$(ProcId).err
+
+# Outputs go directly to EOS; no condor file transfer.
+should_transfer_files = NO
+
+# Single-threaded forward-sim job; ~62 min of sim per 20k-event unit. AD P0/P3
+# dumps add ~50 MB EOS writes. Extra memory headroom for the event dump buffer.
+request_cpus   = 1
+request_memory = 2GB
+request_disk   = 4GB
+
+# "workday" = 8 h max walltime; each unit needs ~1-1.5 h, in-process sim cap
+# is 10800 s (matches the wave-1 timeout lesson).
++JobFlavour = "workday"
+
+queue PROFILE,ROLE,SEED from (
+P0, ad, 1
+P0, ad, 2
+P0, ad, 3
+P0, fdplus, 1
+P0, fdplus, 2
+P0, fdminus, 1
+P0, fdminus, 2
+P1, ad, 1
+P1, ad, 2
+P1, ad, 3
+P1, fdplus, 1
+P1, fdplus, 2
+P1, fdminus, 1
+P1, fdminus, 2
+P2, ad, 1
+P2, ad, 2
+P2, ad, 3
+P2, fdplus, 1
+P2, fdplus, 2
+P2, fdminus, 1
+P2, fdminus, 2
+P3, ad, 1
+P3, ad, 2
+P3, ad, 3
+P3, fdplus, 1
+P3, fdplus, 2
+P3, fdminus, 1
+P3, fdminus, 2
+)
