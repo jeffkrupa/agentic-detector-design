@@ -1282,3 +1282,63 @@ it hits a variance wall. jsonl entry is the twin.)*
   (one `condor_q -totals`). Analyze after completion:
   `python -u -m fidelity.wave13_scaleval --analyze` →
   `fidelity/wave13_scaleval_summary.json`. Awaiting jobs + human verdict.
+
+## Wave 14 — transportability of the canonical-severed absorber core undershoot (MEASURED)
+
+- **No new knob.** Reproduces the paper published strategy (canonical
+  severed `-x 2 -y 1 -B 1 -f 0.2 -N 1e-3 -C 1000`, all governor/anchor
+  knobs OFF). AD via config `forward_bin` (shared `build/HepEmShow`);
+  **gate G14**: shared-build knobs-off canonical ≡ `build_agent_fwd`
+  knobs-off canonical, byte-identical `edeps_1` (n=500, a=2.3:1, s1).
+  `build_agent_fwd` mtime 1784902792072373144 ns / 429472 B re-verified,
+  not rebuilt.
+- **Question**: is the on-design (a=2.3) severed-absorber core-window
+  (L5–18) AD/FD undershoot ~0.77 a geometry-INDEPENDENT constant (single
+  blind 1/0.766 ≈ 1.30× correction transports) or does it drift with
+  absorber thickness a (needs a scaling rule c(a))? Measured severed
+  absorber AD/FD at a = 2.0, 2.3, 3.0.
+- **Compute**: a=2.3 AD reused (`experiments/perlayer_adfd/absorber_ad_s*`,
+  46 seeds × 20k = 920k). a=2.0 & a=3.0 AD run LOCALLY (severed, absorber
+  seed `-a a:1`, 6 seeds × 2k = 12k each, 2 concurrent, nice −10;
+  `fidelity/wave14_runs/absorber_ad_a{20,30}_s*.jsonl`; 0 failed, 0 NaN).
+  FD truths reused/recomputed (all three reproduce the reported values
+  exactly): a=2.3 = 2233.68 ± 14.75 (perlayer_adfd_1M_summary, paired CRN
+  h=0.02); a=2.0 = 2119.74 ± 14.08 (wave-13 arms a=2.1/1.9, h=0.1,
+  unpaired seed-scatter); a=3.0 = 2018.05 ± 15.36 (wave-11 od arms
+  a=3.1/2.9). Window AD SE = seed-scatter on per-seed core sums (keeps
+  inter-layer covariance).
+- **Result — core L5–18 severed AD/FD (window sum)**:
+
+  | a (mm) | AD core | FD core | AD/FD | 1/ratio (corr.) | AD n_ev |
+  |--------|---------|---------|-------|-----------------|---------|
+  | 2.0 | 1570.3 ± 77.1 | 2119.7 ± 14.1 | **0.741 ± 0.037** | 1.350 ± 0.067 | 12k |
+  | 2.3 | 1724.4 ± 15.8 | 2233.7 ± 14.8 | **0.772 ± 0.009** | 1.295 ± 0.015 | 920k |
+  | 3.0 | 1628.8 ± 96.6 | 2018.0 ± 15.4 | **0.807 ± 0.048** | 1.239 ± 0.074 | 12k |
+
+- **Constant-vs-drift verdict (measured)**: weighted constant fit
+  c = **0.7714 ± 0.0083**, χ²/dof = 0.62 → constant is a good fit.
+  Weighted linear fit slope = **+0.063 ± 0.060 /mm** (intercept 0.625),
+  significance **1.06σ** → NOT significant. The point estimates trend
+  monotonically upward (0.741 → 0.772 → 0.807), hinting at a possible
+  mild positive drift with a, but the two off-design points are too
+  imprecise (12k events, ~4–5% ratio SE) to confirm it. A single blind
+  **1.30×** correction (⇔ ratio 0.769) sits within ≤0.8σ of all three
+  geometries — it transports within current errors.
+- **Per-layer core-ratio uniformity**: clean & uniform ONLY at the
+  high-stats anchor a=2.3 (std 0.036, ratios 0.73–0.85). At a=2.0/3.0 the
+  per-layer breakdown is AD shot-noise-dominated (std 0.20 and 1.76;
+  a=3.0 has individual-layer ratios −1.9, 6.2 where per-layer mean_dE SEM
+  blows up) — only the pooled window sum is robust at 12k. NOT evidence
+  against uniformity; a precision artifact.
+- **Statistics caveat (honest)**: local 12k is precision-limited. At
+  a=3.0, 0.807 ± 0.048 cannot distinguish 0.77 from 0.85 (both <1σ). The
+  1.06σ slope is neither confirmed nor excluded. To resolve the
+  suspected ~0.06/mm drift at >3σ (and pin per-layer uniformity off the
+  anchor) recommend a small condor batch: ~10× more events at a=2.0 and
+  a=3.0 (match the a=2.3 ~1M anchor → ratio SE ~1.5%). NOT submitted.
+- **Deviation**: task specced `build_agent_fwd` for AD; used the
+  byte-identical shared build via `tools.sim` (gate G14) so the three
+  geometries share provenance with the a=2.3 reference AD.
+- **Status**: measured 2026-07-28, `fidelity/wave14_transport.py`,
+  summary `fidelity/wave14_transport_summary.json`. Awaiting human
+  verdict.

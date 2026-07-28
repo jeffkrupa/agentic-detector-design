@@ -1,0 +1,12 @@
+[run] a=3.0 seed=1 n=2000 g=5.7 seeded=a flags=['-x', '2', '-y', '1', '-B', '1', '-f', '0.2', '-N', '1e-3', '-C', '1000']
+[run] OK core_dE(L5-18)=1638.19  total_dE=247.33 -> /eos/home-j/jeffkrup/agentic/agentic-detector-design/fidelity/wave14_runs/absorber_ad_a30_s1.jsonl
+[run] a=3.0 seed=2 n=2000 g=5.7 seeded=a flags=['-x', '2', '-y', '1', '-B', '1', '-f', '0.2', '-N', '1e-3', '-C', '1000']
+[run] OK core_dE(L5-18)=1486.24  total_dE=595.09 -> /eos/home-j/jeffkrup/agentic/agentic-detector-design/fidelity/wave14_runs/absorber_ad_a30_s2.jsonl
+[run] a=3.0 seed=3 n=2000 g=5.7 seeded=a flags=['-x', '2', '-y', '1', '-B', '1', '-f', '0.2', '-N', '1e-3', '-C', '1000']
+[run] OK core_dE(L5-18)=1515.19  total_dE=74.13 -> /eos/home-j/jeffkrup/agentic/agentic-detector-design/fidelity/wave14_runs/absorber_ad_a30_s3.jsonl
+[run] a=3.0 seed=4 n=2000 g=5.7 seeded=a flags=['-x', '2', '-y', '1', '-B', '1', '-f', '0.2', '-N', '1e-3', '-C', '1000']
+[run] OK core_dE(L5-18)=1450.00  total_dE=66.72 -> /eos/home-j/jeffkrup/agentic/agentic-detector-design/fidelity/wave14_runs/absorber_ad_a30_s4.jsonl
+[run] a=3.0 seed=5 n=2000 g=5.7 seeded=a flags=['-x', '2', '-y', '1', '-B', '1', '-f', '0.2', '-N', '1e-3', '-C', '1000']
+[run] OK core_dE(L5-18)=2090.62  total_dE=531.30 -> /eos/home-j/jeffkrup/agentic/agentic-detector-design/fidelity/wave14_runs/absorber_ad_a30_s5.jsonl
+[run] a=3.0 seed=6 n=2000 g=5.7 seeded=a flags=['-x', '2', '-y', '1', '-B', '1', '-f', '0.2', '-N', '1e-3', '-C', '1000']
+[run] OK core_dE(L5-18)=1592.66  total_dE=109.76 -> /eos/home-j/jeffkrup/agentic/agentic-detector-design/fidelity/wave14_runs/absorber_ad_a30_s6.jsonl
