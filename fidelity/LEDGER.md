@@ -1342,3 +1342,53 @@ it hits a variance wall. jsonl entry is the twin.)*
 - **Status**: measured 2026-07-28, `fidelity/wave14_transport.py`,
   summary `fidelity/wave14_transport_summary.json`. Awaiting human
   verdict.
+
+## Wave 15 — optimization pre-flight: energy-gradient exactness off-baseline + covariance conditioning (VALIDATED)
+
+Two load-bearing assumptions of the Fisher-info sampling campaign
+(`fidelity/OPTIMIZATION_PLAN.md` §3), tested BEFORE the ~155 CPU-h search.
+28 units, 0 failed/nan/timeout (AD 60k ev/profile over seeds 1–3; CRN-paired
+FD 40k ev/side/profile over seeds 1–2). Summary `fidelity/preflight_summary.json`.
+
+- **CHECK 1 — energy-gradient exactness off the uniform baseline: FAIL.**
+  Core-window (L5–18) AD/FD_E per gap profile:
+  - P0 uniform: **1.101 ± 0.047** (within 2%: NO)
+  - P1 front-loaded: **1.176 ± 0.017** (NO, ~10σ)
+  - P2 back-loaded: **1.214 ± 0.061** (NO)
+  - P3 peaked: **1.020 ± 0.050** (YES)
+
+  AD sits systematically **10–21% ABOVE** the CRN-paired FD in the shower core
+  at P0/P1/P2; only the peaked P3 lands within 2%. Per-layer: 34–42 of the
+  ~45–49 FD-significant layers deviate >5% (worst-layer ratios blow up to
+  140–810% in the L1/L4/L49 tail where FD≈0 — ill-conditioned, not the headline).
+  **Candidate confound**: AD units carry `--rng-lineage 0`, FD units carry
+  `--rng-lineage 1`; the plan assumes the energy channel is lineage-insensitive.
+  Not resolved here — must be isolated before g is trusted off-baseline.
+
+- **CHECK 2 — covariance/Fisher conditioning at n=20k (P0, P3): FAIL (both estimators).**
+  cond(Σ) ≈ 1.2e4 (P0) / 1.6e4 (P3); zone-6×6 cond ≈ 95–112.
+  Run-to-run relative spread of I = gᵀΣ⁻¹g: **full 50×50 0.571 (P0) / 0.820 (P3)**
+  (seed1-v-2 55% / 86%); **6×6 zone-Fisher 0.232 (P0) / 0.629 (P3)** (seed1-v-2
+  23% / 3%); I_diag seed1-v-2 8% (P0) / 56% (P3). Ledoit–Wolf I_lw ≈ I_full
+  (small shrinkage δ — does NOT rescue it). Dump-mean vs edeps cross-check
+  3–4e-14 (dumps parsed correctly; the instability is genuine).
+  → `recommendation = neither_stable` for **both** profiles: neither the full
+  50×50 nor the zone fallback is stable to <10% at 20k.
+
+- **BONUS (not a gate) — Fisher & Cramér-Rao at 10 GeV, dump-based (P0, P3 only).**
+  I_diag 7.20e-6 → σ_E/E 3.73% (P0) vs 1.51e-5 → 2.58% (P3);
+  I_full 2.36e-5 → 2.06% (P0) vs 5.98e-5 → 1.29% (P3).
+  Peaked P3 carries **~2.1×** the diagonal information of uniform P0 → the
+  profiles DO show an information spread (uniform is not optimal; the optimizer
+  has something to find), though the estimates are too noisy to be more than
+  suggestive. P1/P2 were not dumped, and the edeps `var_E` column is NOT the
+  per-event layer variance (5–7× off in-core), so their I is not computable from
+  the jsonl rows.
+
+- **BOTTOM LINE**: BOTH pre-flight checks are RED. The CMA-ES search should NOT
+  proceed as configured. Next steps: (a) rerun AD with `--rng-lineage 1` (or FD
+  without) to decide whether Check-1 is a lineage confound or a real off-baseline
+  AD bias; (b) raise n and/or adopt a stronger-regularized low-rank/zone
+  estimator to stabilize I.
+- **Status**: validated 2026-07-28, `fidelity/preflight.py --analyze`,
+  summary `fidelity/preflight_summary.json`. Awaiting human verdict.
